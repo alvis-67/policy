@@ -1,0 +1,23 @@
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { AuthGate } from './components/AuthGate'
+import { Layout } from './components/Layout'
+import { ClientDetail } from './pages/ClientDetail'
+import { Clients } from './pages/Clients'
+import { Dashboard } from './pages/Dashboard'
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <AuthGate>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="clients" element={<Clients />} />
+          <Route path="clients/:id" element={<ClientDetail />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+      </AuthGate>
+    </BrowserRouter>
+  )
+}
