@@ -12,7 +12,7 @@ export function App() {
     <BrowserRouter>
       <AuthGate>
       <Routes>
-        <Route path="report" element={<Report />} />
+        <Route path="clients/:id/report" element={<Report />} />
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="clients" element={<Clients />} />

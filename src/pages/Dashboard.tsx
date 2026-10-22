@@ -48,14 +48,9 @@ export function Dashboard() {
         title="總覽"
         description="客戶與保單放在同一個紀錄。日後的保障分析會直接使用這些資料。"
         action={
-          <div className="inline-actions">
-            <Link className="btn btn-primary" to="/report">
-              儲存為 PDF
-            </Link>
-            <Link className="btn btn-ghost" to="/clients?new=1">
-              新增客戶
-            </Link>
-          </div>
+          <Link className="btn btn-primary" to="/clients?new=1">
+            新增客戶
+          </Link>
         }
       />
       {error ? (

@@ -146,7 +146,7 @@ export function ClientDetail() {
           </div>
         </div>
         <div className="actions">
-          <Link className="btn btn-primary" to="/report">
+          <Link className="btn btn-primary" to={`/clients/${client.id}/report`}>
             儲存為 PDF
           </Link>
           <button type="button" className="btn btn-ghost" onClick={() => setEditing(true)}>
