@@ -54,9 +54,9 @@ export const POLICY_STATUSES = [
 export type PolicyStatus = (typeof POLICY_STATUSES)[number]['value']
 
 export const INSURERS = [
+  '宏利 Manulife',
   '友邦 AIA',
   '保誠 Prudential',
-  '宏利 Manulife',
   '安盛 AXA',
   '富衛 FWD',
   '永明金融 Sun Life',

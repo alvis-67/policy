@@ -1,5 +1,5 @@
 import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'react'
-import { errorMessage } from '../api'
+import { api, errorMessage } from '../api'
 import { formatMoney, toAnnualPremium, toMonthlyPremium } from '../lib/format'
 import {
   CURRENCIES,
@@ -7,14 +7,21 @@ import {
   POLICY_STATUSES,
   POLICY_TYPES,
   PREMIUM_FREQUENCIES,
+  type PolicyType,
 } from '../lib/labels'
 import { parseOptionalNumber, parseRequiredNumber } from '../lib/parse'
+import { catalogProducts } from '../lib/products'
 import type { Policy, PolicyWrite } from '../types'
 import { Field } from './Field'
 
+const OTHER_INSURER = '__other__'
+const NEW_POLICY_NAME = '__new__'
+
 interface PolicyFormState {
-  insurer: string
-  policyName: string
+  insurerSelect: string
+  insurerCustom: string
+  policyNameSelect: string
+  policyNameCustom: string
   policyNumber: string
   policyType: string
   currency: string
@@ -27,10 +34,30 @@ interface PolicyFormState {
   notes: string
 }
 
+interface SavedPolicyName {
+  insurer: string
+  policyType: PolicyType
+  policyName: string
+}
+
+function unique(values: Array<string | undefined>) {
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const value of values) {
+    const name = value?.trim() ?? ''
+    if (!name || seen.has(name)) continue
+    seen.add(name)
+    result.push(name)
+  }
+  return result
+}
+
 function emptyState(): PolicyFormState {
   return {
-    insurer: '',
-    policyName: '',
+    insurerSelect: '',
+    insurerCustom: '',
+    policyNameSelect: '',
+    policyNameCustom: '',
     policyNumber: '',
     policyType: '',
     currency: 'HKD',
@@ -46,8 +73,10 @@ function emptyState(): PolicyFormState {
 
 function fromPolicy(policy: Policy): PolicyFormState {
   return {
-    insurer: policy.insurer,
-    policyName: policy.policyName,
+    insurerSelect: policy.insurer,
+    insurerCustom: '',
+    policyNameSelect: policy.policyName,
+    policyNameCustom: '',
     policyNumber: policy.policyNumber,
     policyType: policy.policyType,
     currency: policy.currency,
@@ -61,20 +90,91 @@ function fromPolicy(policy: Policy): PolicyFormState {
   }
 }
 
+function insurerNameOf(form: PolicyFormState) {
+  return form.insurerSelect === OTHER_INSURER ? form.insurerCustom.trim() : form.insurerSelect.trim()
+}
+
+function policyNameOptions(insurer: string, policyType: string, saved: SavedPolicyName[], extra?: string) {
+  return unique([
+    ...catalogProducts(insurer, policyType),
+    ...saved.filter((item) => item.insurer === insurer && item.policyType === policyType).map((item) => item.policyName),
+    extra,
+  ])
+}
+
 export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onSubmit: (input: PolicyWrite) => Promise<void> }) {
   const [form, setForm] = useState<PolicyFormState>(() => (initial ? fromPolicy(initial) : emptyState()))
+  const [saved, setSaved] = useState<SavedPolicyName[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const errorRef = useRef<HTMLDivElement>(null)
   const lock = useRef(false)
 
   useEffect(() => {
+    let active = true
+    api.policyChoices().then(
+      (choices) => {
+        if (active) setSaved(choices)
+      },
+      () => {},
+    )
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
     if (error) errorRef.current?.scrollIntoView({ block: 'nearest' })
   }, [error])
+
+  const insurerName = insurerNameOf(form)
+  const keptName =
+    initial && initial.insurer === insurerName && initial.policyType === form.policyType ? initial.policyName : undefined
+  const nameOptions = policyNameOptions(insurerName, form.policyType, saved, keptName)
+  const insurerOptions = unique([
+    ...INSURERS,
+    ...saved.map((item) => item.insurer).filter((name) => !INSURERS.includes(name)),
+    initial?.insurer,
+  ])
+  const namesReady = Boolean(insurerName && form.policyType)
 
   function onChange(event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     const { name, value } = event.target
     setForm((current) => ({ ...current, [name]: value }))
+  }
+
+  function keepName(current: PolicyFormState, insurer: string, policyType: string, savedNames: SavedPolicyName[]) {
+    const extra = initial && initial.insurer === insurer && initial.policyType === policyType ? initial.policyName : undefined
+    const options = policyNameOptions(insurer, policyType, savedNames, extra)
+    if (current.policyNameSelect === NEW_POLICY_NAME || options.includes(current.policyNameSelect)) return current
+    return { ...current, policyNameSelect: '', policyNameCustom: '' }
+  }
+
+  function onInsurerSelect(value: string) {
+    setForm((current) => {
+      const next = { ...current, insurerSelect: value, insurerCustom: value === OTHER_INSURER ? current.insurerCustom : '' }
+      const insurer = value === OTHER_INSURER ? next.insurerCustom.trim() : value.trim()
+      return keepName(next, insurer, next.policyType, saved)
+    })
+  }
+
+  function onInsurerCustom(value: string) {
+    setForm((current) => {
+      const next = { ...current, insurerCustom: value }
+      return keepName(next, value.trim(), next.policyType, saved)
+    })
+  }
+
+  function onPolicyType(value: string) {
+    setForm((current) => keepName({ ...current, policyType: value }, insurerNameOf(current), value, saved))
+  }
+
+  function onPolicyNameSelect(value: string) {
+    setForm((current) => ({
+      ...current,
+      policyNameSelect: value,
+      policyNameCustom: value === NEW_POLICY_NAME ? current.policyNameCustom : '',
+    }))
   }
 
   const amount = parseOptionalNumber(form.premiumAmount)
@@ -89,19 +189,27 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (lock.current) return
-    const insurer = form.insurer.trim()
-    const policyName = form.policyName.trim()
-    if (!insurer) {
-      setError('請填寫保險公司')
+    const insurer = insurerName
+    const policyName = (form.policyNameSelect === NEW_POLICY_NAME ? form.policyNameCustom : form.policyNameSelect).trim()
+    if (!form.insurerSelect) {
+      setError('請選擇保險公司')
       return
     }
-    if (!policyName) {
-      setError('請填寫保單名稱')
+    if (!insurer) {
+      setError('請輸入保險公司名稱')
       return
     }
     const policyType = POLICY_TYPES.find((item) => item.value === form.policyType)?.value
     if (!policyType) {
       setError('請選擇保障類別')
+      return
+    }
+    if (!form.policyNameSelect) {
+      setError('請選擇保單名稱')
+      return
+    }
+    if (!policyName) {
+      setError('請輸入保單名稱')
       return
     }
     const selectedCurrency = CURRENCIES.find((item) => item.value === form.currency)?.value
@@ -166,24 +274,29 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
         </div>
       ) : null}
       <div className="form-grid">
-        <Field label="保險公司" htmlFor="insurer" required>
-          <input id="insurer" name="insurer" list="insurer-list" value={form.insurer} onChange={onChange} autoFocus placeholder="友邦 AIA" />
-          <datalist id="insurer-list">
-            {INSURERS.map((name) => (
-              <option key={name} value={name} />
+        <Field label="保險公司" htmlFor="insurer" required hint="清單沒有的公司可選「其他」。儲存保單後，該名稱會出現在選單。">
+          <select id="insurer" value={form.insurerSelect} onChange={(event) => onInsurerSelect(event.target.value)} autoFocus>
+            <option value="">請選擇</option>
+            {insurerOptions.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
             ))}
-          </datalist>
+            <option value={OTHER_INSURER}>其他</option>
+          </select>
+          {form.insurerSelect === OTHER_INSURER ? (
+            <input
+              className="field-extra"
+              id="insurerCustom"
+              value={form.insurerCustom}
+              onChange={(event) => onInsurerCustom(event.target.value)}
+              placeholder="輸入保險公司名稱"
+              aria-label="保險公司名稱"
+            />
+          ) : null}
         </Field>
-        <Field label="保單號碼" htmlFor="policyNumber" hint="選填，方便分辨同一公司的保單">
-          <input id="policyNumber" name="policyNumber" value={form.policyNumber} onChange={onChange} />
-        </Field>
-        <div className="span-2">
-          <Field label="保單名稱" htmlFor="policyName" required>
-            <input id="policyName" name="policyName" value={form.policyName} onChange={onChange} placeholder="例如：加裕智倍保" />
-          </Field>
-        </div>
         <Field label="保障類別" htmlFor="policyType" required hint="日後會按類別判斷保障是否足夠">
-          <select id="policyType" name="policyType" value={form.policyType} onChange={onChange}>
+          <select id="policyType" value={form.policyType} onChange={(event) => onPolicyType(event.target.value)}>
             <option value="">請選擇</option>
             {POLICY_TYPES.map((option) => (
               <option key={option.value} value={option.value}>
@@ -191,6 +304,44 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
               </option>
             ))}
           </select>
+        </Field>
+        <div className="span-2">
+          <Field
+            label="保單名稱"
+            htmlFor="policyName"
+            required
+            hint={namesReady ? '清單沒有的保單可選「新增其他」。儲存保單後，該名稱會出現在選單。' : '請先選擇保險公司及保障類別'}
+          >
+            <select
+              id="policyName"
+              value={namesReady ? form.policyNameSelect : ''}
+              onChange={(event) => onPolicyNameSelect(event.target.value)}
+              disabled={!namesReady}
+            >
+              <option value="">{namesReady ? '請選擇' : '請先選擇保險公司及保障類別'}</option>
+              {namesReady
+                ? nameOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))
+                : null}
+              {namesReady ? <option value={NEW_POLICY_NAME}>新增其他</option> : null}
+            </select>
+            {namesReady && form.policyNameSelect === NEW_POLICY_NAME ? (
+              <input
+                className="field-extra"
+                id="policyNameCustom"
+                value={form.policyNameCustom}
+                onChange={(event) => setForm((current) => ({ ...current, policyNameCustom: event.target.value }))}
+                placeholder="輸入保單名稱"
+                aria-label="保單名稱"
+              />
+            ) : null}
+          </Field>
+        </div>
+        <Field label="保單號碼" htmlFor="policyNumber" hint="選填，方便分辨同一公司的保單">
+          <input id="policyNumber" name="policyNumber" value={form.policyNumber} onChange={onChange} />
         </Field>
         <Field label="保單狀態" htmlFor="status" hint="只有生效中及已繳清會計入保障額">
           <select id="status" name="status" value={form.status} onChange={onChange}>

@@ -410,6 +410,10 @@ textarea {
   resize: vertical;
 }
 
+.field-extra {
+  margin-top: 0.7rem;
+}
+
 .search input:focus,
 .field input:focus,
 .field select:focus,

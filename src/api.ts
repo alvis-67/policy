@@ -284,4 +284,18 @@ export const api = {
   async backup(): Promise<{ clients: Client[]; policies: Policy[] }> {
     return loadBook()
   },
+
+  async policyChoices(): Promise<Array<{ insurer: string; policyType: Policy['policyType']; policyName: string }>> {
+    const { policies } = await loadBook()
+    const seen = new Set<string>()
+    const choices: Array<{ insurer: string; policyType: Policy['policyType']; policyName: string }> = []
+    const ordered = policies.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    for (const policy of ordered) {
+      const key = `${policy.insurer}\0${policy.policyType}\0${policy.policyName}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      choices.push({ insurer: policy.insurer, policyType: policy.policyType, policyName: policy.policyName })
+    }
+    return choices
+  },
 }
