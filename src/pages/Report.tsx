@@ -2,20 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, errorMessage } from '../api'
 import { MoneyText } from '../components/MoneyText'
+import { displayName, formatCover, formatDate, formatMoney, formatPhone, moneyParts, todayISO, toAnnualPremium } from '../lib/format'
 import {
-  calcAge,
-  displayName,
-  formatCover,
-  formatDate,
-  formatMoney,
-  formatPhone,
-  moneyParts,
-  todayISO,
-  toAnnualPremium,
-} from '../lib/format'
-import {
-  GENDER_OPTIONS,
-  MARITAL_OPTIONS,
   POLICY_STATUSES,
   POLICY_TYPES,
   PREMIUM_FREQUENCIES,
@@ -67,7 +55,6 @@ export function Report() {
     }
   }, [client, issuedOn])
 
-  const age = client?.dateOfBirth ? calcAge(client.dateOfBirth) : null
   const active = policies.filter((policy) => countsAsCover(policy.status))
   const inactive = policies.filter((policy) => !countsAsCover(policy.status))
   const monthly = totals ? moneyParts(totals.monthlyEquivalent) : []
@@ -101,35 +88,11 @@ export function Report() {
             <h1>保單報告書</h1>
             <p className="report-person">{client.chineseName.trim() || client.englishName.trim() || '未命名客戶'}</p>
             {client.englishName.trim() && client.chineseName.trim() ? <p className="report-person-en">{client.englishName.trim()}</p> : null}
-            <p className="report-identity">
-              {[
-                client.gender ? labelOf(GENDER_OPTIONS, client.gender) : '',
-                age == null ? '' : `${age}歲`,
-                client.dateOfBirth ? formatDate(client.dateOfBirth) : '',
-                client.maritalStatus ? labelOf(MARITAL_OPTIONS, client.maritalStatus) : '',
-                client.dependents != null ? `受養 ${client.dependents} 人` : '',
-              ]
+            <p className="report-contact-line">
+              {[client.phone.trim() ? formatPhone(client.phone) : '', client.email.trim(), client.occupation.trim()]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
-            <dl className="report-contact">
-              <div>
-                <dt>電話</dt>
-                <dd>{formatPhone(client.phone)}</dd>
-              </div>
-              {client.email ? (
-                <div>
-                  <dt>電郵</dt>
-                  <dd>{client.email}</dd>
-                </div>
-              ) : null}
-              {client.occupation.trim() ? (
-                <div>
-                  <dt>職業</dt>
-                  <dd>{client.occupation}</dd>
-                </div>
-              ) : null}
-            </dl>
           </header>
 
           <section>
@@ -139,24 +102,16 @@ export function Report() {
                 <div key={type.value}>
                   <span>{type.label}</span>
                   <strong>{coverHeadline(type.value, policies, totals)}</strong>
-                  <em>{totals.byType[type.value].count ? `${totals.byType[type.value].count} 張計入` : '未有紀錄'}</em>
                 </div>
               ))}
             </div>
-            <div className="report-premium">
-              <div>
-                <span>每年保費</span>
-                <strong>{moneyParts(totals.annualPremium).join(' · ') || '—'}</strong>
-              </div>
-              <div>
-                <span>折合每月</span>
-                <strong>{monthly.join(' · ') || '—'}</strong>
-              </div>
-              <div>
-                <span>計入保障</span>
-                <strong>{totals.activeCount} 張</strong>
-              </div>
-            </div>
+            <p className="report-premium-line">
+              {[
+                `每年保費 ${moneyParts(totals.annualPremium).join(' · ') || '—'}`,
+                `折合每月 ${monthly.join(' · ') || '—'}`,
+                `${totals.activeCount} 張計入保障`,
+              ].join(' · ')}
+            </p>
           </section>
 
           <PolicyGroups title="生效保單" policies={active} empty="未有生效中或已繳清的保單。" />
@@ -184,76 +139,68 @@ function coverHeadline(type: PolicyType, policies: Policy[], totals: PolicyTotal
 }
 
 function PolicyGroups({ title, policies, empty, note }: { title: string; policies: Policy[]; empty?: string; note?: string }) {
-  const groups = POLICY_TYPES.map((type) => ({
-    type,
-    rows: policies.filter((policy) => policy.policyType === type.value).sort((a, b) => b.issueDate.localeCompare(a.issueDate)),
-  })).filter((group) => group.rows.length > 0)
+  const rows = [...policies].sort((a, b) => {
+    const byType = POLICY_TYPES.findIndex((type) => type.value === a.policyType) - POLICY_TYPES.findIndex((type) => type.value === b.policyType)
+    return byType || b.issueDate.localeCompare(a.issueDate)
+  })
 
   return (
     <section className="report-schedule">
       <h2>{title}</h2>
       {note ? <p className="report-note">{note}</p> : null}
-      {groups.length === 0 ? <p className="report-empty">{empty}</p> : null}
-      {groups.map((group) => (
-        <div key={group.type.value} className="report-group">
-          <h3>{group.type.label}</h3>
-          {group.rows.map((policy) => (
-            <article key={policy.id} className="report-policy">
-              <header>
-                <div>
-                  <p>{policy.insurer}</p>
-                  <h4>{policy.policyName}</h4>
-                  {policy.policyNumber ? <p className="report-sub">保單號碼 {policy.policyNumber}</p> : null}
-                </div>
-                <span className="report-status">{labelOf(POLICY_STATUSES, policy.status)}</span>
-              </header>
-              <dl>
-                {policy.policyType === 'medical' ? (
-                  <>
-                    <div>
-                      <dt>病房</dt>
-                      <dd>{policy.roomLevel ? labelOf(ROOM_LEVELS, policy.roomLevel) : '—'}</dd>
-                    </div>
-                    <div>
-                      <dt>自付費</dt>
-                      <dd>{policy.deductible == null ? '—' : formatMoney(policy.deductible, policy.currency)}</dd>
-                    </div>
-                    <div>
-                      <dt>賠償</dt>
-                      <dd>{policy.fullCover == null ? '—' : policy.fullCover ? '全包' : '非全包'}</dd>
-                    </div>
-                  </>
-                ) : (
-                  <div>
-                    <dt>保障額</dt>
-                    <dd>{formatCover(policy)}</dd>
-                  </div>
-                )}
-                <div>
-                  <dt>簽發日期</dt>
-                  <dd>{formatDate(policy.issueDate)}</dd>
-                </div>
-                <div>
-                  <dt>保費</dt>
-                  <dd>
-                    {formatMoney(policy.premiumAmount, policy.currency)} · {labelOf(PREMIUM_FREQUENCIES, policy.premiumFrequency)}
-                    {policy.premiumFrequency === 'monthly' ? (
-                      <span className="report-sub"> 折合每年 {formatMoney(toAnnualPremium(policy.premiumAmount, 'monthly'), policy.currency)}</span>
-                    ) : null}
-                  </dd>
-                </div>
-                {policy.premiumTerm ? (
-                  <div>
-                    <dt>供款年期</dt>
-                    <dd>{policy.premiumTerm}</dd>
-                  </div>
-                ) : null}
-              </dl>
-              {policy.notes.trim() ? <p className="report-note">{policy.notes}</p> : null}
-            </article>
+      {rows.length === 0 ? <p className="report-empty">{empty}</p> : null}
+      {rows.length > 0 ? (
+        <div className="report-list">
+          <div className="report-row report-row-head">
+            <span>類別</span>
+            <span>保單</span>
+            <span>保障</span>
+            <span>保費</span>
+          </div>
+          {rows.map((policy) => (
+            <div key={policy.id} className="report-row">
+              <span className="report-type">{labelOf(POLICY_TYPES, policy.policyType)}</span>
+              <div>
+                <p>
+                  <strong>{policy.insurer}</strong> {policy.policyName}
+                </p>
+                <p className="report-meta">{policyMeta(policy)}</p>
+                {policy.notes.trim() ? <p className="report-meta">{policy.notes}</p> : null}
+              </div>
+              <span>{coverLine(policy)}</span>
+              <span>{premiumLine(policy)}</span>
+            </div>
           ))}
         </div>
-      ))}
+      ) : null}
     </section>
   )
+}
+
+function policyMeta(policy: Policy) {
+  return [
+    policy.policyNumber,
+    formatDate(policy.issueDate),
+    policy.premiumTerm ? `供款 ${policy.premiumTerm}` : '',
+    policy.status === 'inforce' ? '' : labelOf(POLICY_STATUSES, policy.status),
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+function coverLine(policy: Policy) {
+  if (policy.policyType !== 'medical') return formatCover(policy)
+  return [
+    policy.roomLevel ? labelOf(ROOM_LEVELS, policy.roomLevel) : '',
+    policy.deductible == null ? '' : `自付 ${formatMoney(policy.deductible, policy.currency)}`,
+    policy.fullCover == null ? '' : policy.fullCover ? '全包' : '非全包',
+  ]
+    .filter(Boolean)
+    .join(' · ') || '—'
+}
+
+function premiumLine(policy: Policy) {
+  const amount = `${formatMoney(policy.premiumAmount, policy.currency)} ${labelOf(PREMIUM_FREQUENCIES, policy.premiumFrequency)}`
+  if (policy.premiumFrequency !== 'monthly') return amount
+  return `${amount}（每年 ${formatMoney(toAnnualPremium(policy.premiumAmount, 'monthly'), policy.currency)}）`
 }
