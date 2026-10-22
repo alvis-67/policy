@@ -516,14 +516,36 @@ span.catalog-pick {
 .report-screen {
   min-height: 100vh;
   background: #e6e1d6;
-  padding: 1.25rem 1rem 3rem;
+  padding: 0 0 3rem;
+}
+
+.header-row .inline-actions {
+  margin-left: auto;
 }
 
 .report-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
-  justify-content: space-between;
-  width: min(100%, 210mm);
-  margin: 0 auto 1rem;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  margin: 0 0 1rem;
+  padding: 0.85rem 1.25rem;
+  background: #14302c;
+}
+
+.report-toolbar .btn-ghost {
+  margin-right: auto;
+  border-color: rgba(247, 244, 238, 0.35);
+  color: #f7f4ee;
+}
+
+.report-toolbar .btn-primary {
+  background: #f7f4ee;
+  color: #14302c;
 }
 
 .report-banner,
@@ -698,8 +720,7 @@ span.catalog-pick {
     grid-template-columns: 1fr 1fr;
   }
 
-  .report-mast-row,
-  .report-toolbar {
+  .report-mast-row {
     align-items: flex-start;
     flex-direction: column;
   }

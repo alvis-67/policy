@@ -49,10 +49,10 @@ export function Dashboard() {
         description="客戶與保單放在同一個紀錄。日後的保障分析會直接使用這些資料。"
         action={
           <div className="inline-actions">
-            <Link className="btn btn-ghost" to="/report">
-              匯出報告
+            <Link className="btn btn-primary" to="/report">
+              儲存為 PDF
             </Link>
-            <Link className="btn btn-primary" to="/clients?new=1">
+            <Link className="btn btn-ghost" to="/clients?new=1">
               新增客戶
             </Link>
           </div>
