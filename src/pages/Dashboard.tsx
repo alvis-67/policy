@@ -132,7 +132,7 @@ export function Dashboard() {
                           <td>{labelOf(POLICY_TYPES, type.value)}</td>
                           <td className="num">{stat.count}</td>
                           <td>
-                            <MoneyText bag={stat.sumAssured} />
+                            <MoneyText bag={stat.sumAssured} empty={type.value === 'medical' ? '按病房' : '—'} />
                           </td>
                           <td>
                             <MoneyText bag={stat.annualPremium} empty="—" />

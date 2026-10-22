@@ -8,6 +8,7 @@ import {
   POLICY_STATUSES,
   POLICY_TYPES,
   PREMIUM_FREQUENCIES,
+  ROOM_LEVELS,
 } from './lib/labels'
 import type { Client, ClientDetailResponse, ClientListItem, ClientWrite, Policy, PolicyWrite, Summary } from './types'
 
@@ -38,7 +39,10 @@ interface PolicyRow {
   policy_number: string
   policy_type: string
   currency: string
-  sum_assured: number | string
+  sum_assured: number | string | null
+  room_level: string | null
+  deductible: number | string | null
+  full_cover: boolean | null
   issue_date: string
   premium_amount: number | string
   premium_frequency: string
@@ -102,7 +106,10 @@ function mapPolicy(row: PolicyRow): Policy {
     policyNumber: row.policy_number,
     policyType: requiredEnum(row.policy_type, POLICY_TYPES, 'other'),
     currency: requiredEnum(row.currency, CURRENCIES, 'HKD'),
-    sumAssured: requiredNumber(row.sum_assured),
+    sumAssured: row.sum_assured == null || row.sum_assured === '' ? null : requiredNumber(row.sum_assured),
+    roomLevel: optionalEnum(row.room_level ?? '', ROOM_LEVELS),
+    deductible: optionalNumber(row.deductible),
+    fullCover: row.full_cover == null ? null : row.full_cover === true,
     issueDate: row.issue_date,
     premiumAmount: requiredNumber(row.premium_amount),
     premiumFrequency: requiredEnum(row.premium_frequency, PREMIUM_FREQUENCIES, 'yearly'),
@@ -117,6 +124,9 @@ function mapPolicy(row: PolicyRow): Policy {
 function fail(error: { message: string; code?: string } | null, fallback = '系統暫時無法處理，請再試一次。'): never {
   if (error?.code === 'PGRST116') throw new Error('找不到這項紀錄')
   if (error?.message.toLowerCase().includes('jwt')) throw new Error('請重新登入')
+  if (/room_level|deductible|full_cover|sum_assured/.test(error?.message.toLowerCase() ?? '')) {
+    throw new Error('醫療欄位尚未建立。請到 Supabase SQL Editor 執行 supabase/medical.sql，然後再儲存。')
+  }
   throw new Error(fallback)
 }
 
@@ -196,6 +206,9 @@ function policyPayload(input: PolicyWrite, clientId?: string) {
     policy_type: input.policyType,
     currency: input.currency,
     sum_assured: input.sumAssured,
+    room_level: input.roomLevel || null,
+    deductible: input.deductible,
+    full_cover: input.fullCover,
     issue_date: input.issueDate,
     premium_amount: input.premiumAmount,
     premium_frequency: input.premiumFrequency,

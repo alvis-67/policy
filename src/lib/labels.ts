@@ -27,6 +27,14 @@ export const POLICY_TYPES = [
 
 export type PolicyType = (typeof POLICY_TYPES)[number]['value']
 
+export const ROOM_LEVELS = [
+  { value: 'ward', label: '大房' },
+  { value: 'semi', label: '半私家房' },
+  { value: 'private', label: '私家房' },
+] as const
+
+export type RoomLevel = (typeof ROOM_LEVELS)[number]['value']
+
 export const PRIMARY_COVER_TYPES: readonly PolicyType[] = ['life', 'critical', 'medical', 'accident']
 
 export const CURRENCIES = [

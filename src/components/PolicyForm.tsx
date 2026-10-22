@@ -8,6 +8,7 @@ import {
   POLICY_STATUSES,
   POLICY_TYPES,
   PREMIUM_FREQUENCIES,
+  ROOM_LEVELS,
 } from '../lib/labels'
 import { parseOptionalNumber, parseRequiredNumber } from '../lib/parse'
 import { catalogProducts } from '../lib/products'
@@ -26,6 +27,9 @@ interface PolicyFormState {
   policyType: string
   currency: string
   sumAssured: string
+  roomLevel: string
+  deductible: string
+  fullCover: '' | 'yes' | 'no'
   issueDate: string
   premiumAmount: string
   premiumFrequency: string
@@ -56,6 +60,9 @@ function emptyState(): PolicyFormState {
     policyType: '',
     currency: 'HKD',
     sumAssured: '',
+    roomLevel: '',
+    deductible: '',
+    fullCover: '',
     issueDate: '',
     premiumAmount: '',
     premiumFrequency: 'monthly',
@@ -74,7 +81,10 @@ function fromPolicy(policy: Policy): PolicyFormState {
     policyNumber: policy.policyNumber,
     policyType: policy.policyType,
     currency: policy.currency,
-    sumAssured: String(policy.sumAssured),
+    sumAssured: policy.sumAssured == null ? '' : String(policy.sumAssured),
+    roomLevel: policy.roomLevel,
+    deductible: policy.deductible == null ? '' : String(policy.deductible),
+    fullCover: policy.fullCover == null ? '' : policy.fullCover ? 'yes' : 'no',
     issueDate: policy.issueDate,
     premiumAmount: String(policy.premiumAmount),
     premiumFrequency: policy.premiumFrequency,
@@ -215,7 +225,22 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
       setError('請填寫簽發日期')
       return
     }
-    const sumAssured = parseRequiredNumber(form.sumAssured)
+    const medical = policyType === 'medical'
+    const roomLevel = ROOM_LEVELS.find((item) => item.value === form.roomLevel)?.value
+    if (medical && !roomLevel) {
+      setError('請選擇病房')
+      return
+    }
+    const deductible = medical ? parseRequiredNumber(form.deductible) : null
+    if (deductible === 'invalid') {
+      setError('請填寫有效的自付費。沒有自付費可以填 0。')
+      return
+    }
+    if (medical && !form.fullCover) {
+      setError('請選擇是否全包賠償')
+      return
+    }
+    const sumAssured = medical ? null : parseRequiredNumber(form.sumAssured)
     if (sumAssured === 'invalid') {
       setError('請填寫有效的保障額')
       return
@@ -239,6 +264,9 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
       policyType,
       currency: selectedCurrency,
       sumAssured,
+      roomLevel: medical && roomLevel ? roomLevel : '',
+      deductible: medical ? deductible : null,
+      fullCover: medical ? form.fullCover === 'yes' : null,
       issueDate: form.issueDate,
       premiumAmount,
       premiumFrequency,
@@ -359,9 +387,47 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
         <Field label="簽發日期" htmlFor="issueDate" required>
           <input id="issueDate" name="issueDate" type="date" value={form.issueDate} onChange={onChange} />
         </Field>
-        <Field label="保障額" htmlFor="sumAssured" required hint="人壽、危疾、意外填保額；醫療可填每年限額">
-          <input id="sumAssured" name="sumAssured" inputMode="decimal" value={form.sumAssured} onChange={onChange} placeholder="1000000" />
-        </Field>
+        {form.policyType === 'medical' ? (
+          <>
+            <div className="span-2">
+              <div className="seg-label">
+                病房<span className="req">*</span>
+              </div>
+              <div className="seg" role="group" aria-label="病房">
+                {ROOM_LEVELS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={form.roomLevel === option.value}
+                    onClick={() => setForm((current) => ({ ...current, roomLevel: option.value }))}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Field label="自付費" htmlFor="deductible" required hint="沒有自付費可填 0">
+              <input id="deductible" name="deductible" inputMode="decimal" value={form.deductible} onChange={onChange} placeholder="0" />
+            </Field>
+            <div>
+              <div className="seg-label">
+                全包賠償<span className="req">*</span>
+              </div>
+              <div className="seg" role="group" aria-label="是否全包賠償">
+                <button type="button" aria-pressed={form.fullCover === 'yes'} onClick={() => setForm((current) => ({ ...current, fullCover: 'yes' }))}>
+                  是
+                </button>
+                <button type="button" aria-pressed={form.fullCover === 'no'} onClick={() => setForm((current) => ({ ...current, fullCover: 'no' }))}>
+                  否
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <Field label="保障額" htmlFor="sumAssured" required hint="人壽、危疾、意外填保額">
+            <input id="sumAssured" name="sumAssured" inputMode="decimal" value={form.sumAssured} onChange={onChange} placeholder="1000000" />
+          </Field>
+        )}
         <Field label="供款年期" htmlFor="premiumTerm" hint="選填，例如 20年 或 至65歲">
           <input id="premiumTerm" name="premiumTerm" value={form.premiumTerm} onChange={onChange} />
         </Field>

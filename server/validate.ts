@@ -6,12 +6,14 @@ import {
   POLICY_STATUSES,
   POLICY_TYPES,
   PREMIUM_FREQUENCIES,
+  ROOM_LEVELS,
   type Currency,
   type Gender,
   type MaritalStatus,
   type PolicyStatus,
   type PolicyType,
   type PremiumFrequency,
+  type RoomLevel,
 } from '../src/lib/labels'
 import type { ClientWrite, PolicyWrite } from '../src/types'
 
@@ -139,13 +141,23 @@ export function validatePolicy(body: unknown): PolicyWrite {
     throw new HttpError(400, '請檢查簽發日期')
   }
 
+  const policyType = oneOf(input.policyType, POLICY_TYPES, '保障類別') as PolicyType
+  const medical = policyType === 'medical'
+  const sumAssured = medical ? null : requiredMoney(input.sumAssured, '保障額')
+  const roomLevel = medical ? (oneOf(input.roomLevel, ROOM_LEVELS, '病房') as RoomLevel) : ''
+  const deductible = medical ? requiredMoney(input.deductible, '自付費') : null
+  if (medical && typeof input.fullCover !== 'boolean') throw new HttpError(400, '請選擇是否全包賠償')
+
   return {
     insurer,
     policyName,
     policyNumber: line(input.policyNumber, 40, '保單號碼'),
-    policyType: oneOf(input.policyType, POLICY_TYPES, '保障類別') as PolicyType,
+    policyType,
     currency: oneOf(input.currency, CURRENCIES, '貨幣') as Currency,
-    sumAssured: requiredMoney(input.sumAssured, '保障額'),
+    sumAssured,
+    roomLevel,
+    deductible,
+    fullCover: medical ? input.fullCover === true : null,
     issueDate,
     premiumAmount: requiredMoney(input.premiumAmount, '保費'),
     premiumFrequency: oneOf(input.premiumFrequency, PREMIUM_FREQUENCIES, '保費週期') as PremiumFrequency,

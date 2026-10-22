@@ -68,7 +68,10 @@ const totals = summarizePolicies([
     policyType: 'medical',
     status: 'paidup',
     premiumAmount: 0,
-    sumAssured: 500000,
+    sumAssured: null,
+    roomLevel: 'semi',
+    deductible: 0,
+    fullCover: true,
     policyNumber: 'MED',
   }),
 ])
@@ -82,7 +85,29 @@ assert.equal(totals.monthlyEquivalent.USD, 166.67)
 assert.equal(totals.byType.life.sumAssured.HKD, 3000000)
 assert.equal(totals.byType.life.count, 1)
 assert.equal(totals.byType.critical.sumAssured.USD, 200000)
-assert.equal(totals.byType.medical.sumAssured.HKD, 500000)
+assert.equal(totals.byType.medical.sumAssured.HKD, undefined)
+const medical = validatePolicy({
+  insurer: '宏利 Manulife',
+  policyName: '宏利晉悅自願醫保靈活計劃',
+  policyNumber: '',
+  policyType: 'medical',
+  currency: 'HKD',
+  sumAssured: null,
+  roomLevel: 'private',
+  deductible: 0,
+  fullCover: false,
+  issueDate: '2024-01-01',
+  premiumAmount: 800,
+  premiumFrequency: 'monthly',
+  premiumTerm: '',
+  status: 'inforce',
+  notes: '',
+})
+assert.equal(medical.sumAssured, null)
+assert.equal(medical.roomLevel, 'private')
+assert.equal(medical.deductible, 0)
+assert.equal(medical.fullCover, false)
+assert.throws(() => validatePolicy({ ...medical, roomLevel: '', fullCover: null }))
 assert.equal(totals.byType.medical.annualPremium.HKD, undefined)
 assert.equal(totals.byType.accident.count, 0)
 

@@ -6,6 +6,7 @@ import type {
   PolicyStatus,
   PolicyType,
   PremiumFrequency,
+  RoomLevel,
 } from './lib/labels'
 
 export interface Client {
@@ -37,7 +38,10 @@ export interface Policy {
   policyNumber: string
   policyType: PolicyType
   currency: Currency
-  sumAssured: number
+  sumAssured: number | null
+  roomLevel: RoomLevel | ''
+  deductible: number | null
+  fullCover: boolean | null
   issueDate: string
   premiumAmount: number
   premiumFrequency: PremiumFrequency

@@ -26,7 +26,7 @@ export function summarizePolicies(policies: Policy[]): PolicyTotals {
     const stat = byType[policy.policyType]
     if (!stat) continue
     stat.count += 1
-    addMoney(stat.sumAssured, policy.currency, policy.sumAssured)
+    if (policy.sumAssured != null) addMoney(stat.sumAssured, policy.currency, policy.sumAssured)
     addMoney(stat.annualPremium, policy.currency, annual)
   }
 

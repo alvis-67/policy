@@ -10,7 +10,7 @@ import { PolicyForm } from '../components/PolicyForm'
 import { Stat } from '../components/Stat'
 import { Toast } from '../components/Toast'
 import { calcAge, displayName, formatDate, formatMoney, formatPhone, maskHkid, moneyParts, nameInitial, toAnnualPremium } from '../lib/format'
-import { GENDER_OPTIONS, labelOf, MARITAL_OPTIONS, POLICY_STATUSES, POLICY_TYPES, PREMIUM_FREQUENCIES, PRIMARY_COVER_TYPES } from '../lib/labels'
+import { GENDER_OPTIONS, labelOf, MARITAL_OPTIONS, POLICY_STATUSES, POLICY_TYPES, PREMIUM_FREQUENCIES, PRIMARY_COVER_TYPES, ROOM_LEVELS } from '../lib/labels'
 import type { Client, ClientDetailResponse, CoverageTypeStat, Policy, PolicyTotals } from '../types'
 
 export function ClientDetail() {
@@ -262,7 +262,7 @@ export function ClientDetail() {
                   <th>保險公司</th>
                   <th>保單</th>
                   <th>類別</th>
-                  <th>保障額</th>
+                  <th>保障</th>
                   <th>簽發日期</th>
                   <th>保費</th>
                   <th>狀態</th>
@@ -280,7 +280,7 @@ export function ClientDetail() {
                         {meta ? <div className="subline">{meta}</div> : null}
                       </td>
                       <td>{labelOf(POLICY_TYPES, policy.policyType)}</td>
-                      <td className="num">{formatMoney(policy.sumAssured, policy.currency)}</td>
+                      <td className="num">{coverLabel(policy)}</td>
                       <td>{formatDate(policy.issueDate)}</td>
                       <td>
                         <div className="num">{formatMoney(policy.premiumAmount, policy.currency)}</div>
@@ -378,7 +378,12 @@ function CoverCards({ totals }: { totals: PolicyTotals }) {
     <div className="stack">
       <div className="grid-cover">
         {primary.map((type) => (
-          <CoverCard key={type.value} label={type.label} stat={totals.byType[type.value]} />
+          <CoverCard
+            key={type.value}
+            label={type.label}
+            stat={totals.byType[type.value]}
+            empty={type.value === 'medical' ? '按病房' : undefined}
+          />
         ))}
       </div>
       {secondary.length > 0 ? (
@@ -392,12 +397,23 @@ function CoverCards({ totals }: { totals: PolicyTotals }) {
   )
 }
 
-function CoverCard({ label, stat }: { label: string; stat: CoverageTypeStat }) {
+function coverLabel(policy: Policy) {
+  if (policy.policyType !== 'medical') return policy.sumAssured == null ? '—' : formatMoney(policy.sumAssured, policy.currency)
+  const parts = [
+    policy.roomLevel ? labelOf(ROOM_LEVELS, policy.roomLevel) : '',
+    policy.deductible == null ? '' : `自付費 ${formatMoney(policy.deductible, policy.currency)}`,
+    policy.fullCover == null ? '' : policy.fullCover ? '全包賠償' : '非全包',
+  ].filter(Boolean)
+  if (parts.length > 0) return parts.join(' · ')
+  return policy.sumAssured == null ? '—' : formatMoney(policy.sumAssured, policy.currency)
+}
+
+function CoverCard({ label, stat, empty }: { label: string; stat: CoverageTypeStat; empty?: string }) {
   return (
     <article className={stat.count ? 'card card-on pad' : 'card pad'}>
       <div className="dt">{label}</div>
       <div className="cover-value">
-        <MoneyText bag={stat.sumAssured} empty={stat.count ? 'HK$0' : '未有'} />
+        <MoneyText bag={stat.sumAssured} empty={empty ?? (stat.count ? 'HK$0' : '未有')} />
       </div>
       <p className="hint">{stat.count ? `${stat.count} 張計入保障` : '未有紀錄'}</p>
     </article>
