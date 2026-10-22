@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { api } from '../api'
 import { supabase } from '../lib/supabase'
 import { todayISO } from '../lib/format'
+import { APP_VERSION } from '../version'
 
 function navClass({ isActive }: { isActive: boolean }) {
   return isActive ? 'nav-link active' : 'nav-link'
@@ -16,7 +17,7 @@ export function Layout() {
           <span className="brand-mark">保</span>
           <span>
             <span className="brand-name">保冊</span>
-            <span className="brand-sub">保單管理</span>
+            <span className="brand-sub">保單管理 · {APP_VERSION}</span>
           </span>
         </NavLink>
         <nav className="nav" aria-label="主要">

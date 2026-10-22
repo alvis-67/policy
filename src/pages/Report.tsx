@@ -16,6 +16,7 @@ import {
 } from '../lib/format'
 import { countsAsCover, labelOf, POLICY_STATUSES, POLICY_TYPES, PREMIUM_FREQUENCIES } from '../lib/labels'
 import type { Client, Policy } from '../types'
+import { APP_VERSION } from '../version'
 
 export function Report() {
   const [clients, setClients] = useState<Client[]>([])
@@ -212,7 +213,7 @@ export function Report() {
 
           <footer className="report-foot">
             <p>已失效及已退保的保單仍列於報告，但不計入上方合計。不同貨幣分開列示，不會自動兌換。</p>
-            <p>保冊 · 只供帳號持有人使用</p>
+            <p>保冊 · {APP_VERSION} · 只供帳號持有人使用</p>
           </footer>
         </article>
       ) : null}

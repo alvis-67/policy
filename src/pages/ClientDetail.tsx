@@ -146,6 +146,9 @@ export function ClientDetail() {
           </div>
         </div>
         <div className="actions">
+          <Link className="btn btn-primary" to="/report">
+            儲存為 PDF
+          </Link>
           <button type="button" className="btn btn-ghost" onClick={() => setEditing(true)}>
             編輯資料
           </button>
