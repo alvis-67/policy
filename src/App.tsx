@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthGate } from './components/AuthGate'
 import { Layout } from './components/Layout'
+import { Analysis, AnalysisDetail } from './pages/Analysis'
 import { Catalog } from './pages/Catalog'
 import { ClientDetail } from './pages/ClientDetail'
 import { Clients } from './pages/Clients'
@@ -18,6 +19,8 @@ export function App() {
           <Route path="clients" element={<Clients />} />
           <Route path="clients/:id" element={<ClientDetail />} />
           <Route path="catalog" element={<Catalog />} />
+          <Route path="analysis" element={<Analysis />} />
+          <Route path="analysis/:id" element={<AnalysisDetail />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

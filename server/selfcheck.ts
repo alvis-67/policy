@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
+import { analyzeClient } from '../src/lib/analysis'
 import { toAnnualPremium, toMonthlyPremium } from '../src/lib/format'
 import { summarizePolicies } from './stats'
 import { validateClient, validatePolicy } from './validate'
-import type { Policy, PolicyWrite } from '../src/types'
+import type { Client, Policy, PolicyWrite } from '../src/types'
 
 assert.equal(toAnnualPremium(1500, 'monthly'), 18000)
 assert.equal(toAnnualPremium(18000, 'yearly'), 18000)
@@ -111,7 +112,68 @@ assert.throws(() => validatePolicy({ ...medical, roomLevel: '', fullCover: null 
 assert.equal(totals.byType.medical.annualPremium.HKD, undefined)
 assert.equal(totals.byType.accident.count, 0)
 
+const family = sampleClient({ monthlyIncome: 80000, maritalStatus: 'married', dependents: 2 })
+const familyCover = analyzeClient(family, [
+  policy('life-hk', { ...life, sumAssured: 1000000, premiumAmount: 20000, premiumFrequency: 'yearly' }),
+  policy('ci-hk', { ...life, policyType: 'critical', sumAssured: 500000, premiumAmount: 20000, premiumFrequency: 'yearly', policyNumber: 'CI' }),
+  policy('old', { ...life, status: 'lapsed', sumAssured: 9000000, policyNumber: 'OLD2' }),
+  policy('med', { ...medical, fullCover: true }),
+])
+const lifeGap = familyCover.findings.find((item) => item.type === 'life')
+const criticalGap = familyCover.findings.find((item) => item.type === 'critical')
+const medicalGap = familyCover.findings.find((item) => item.type === 'medical')
+const accidentGap = familyCover.findings.find((item) => item.type === 'accident')
+assert.equal(lifeGap?.hkdNeed, 9600000)
+assert.equal(lifeGap?.hkdGap, 8600000)
+assert.equal(lifeGap?.verdict, 'short')
+assert.equal(criticalGap?.hkdNeed, 4800000)
+assert.equal(criticalGap?.hkdGap, 4300000)
+assert.equal(medicalGap?.verdict, 'enough')
+assert.equal(accidentGap?.verdict, 'short')
+assert.equal(accidentGap?.hkdGap, 4800000)
+
+const usdOnly = analyzeClient(family, [policy('usd', { ...life, currency: 'USD', sumAssured: 200000, policyNumber: 'US2' })])
+assert.equal(usdOnly.findings.find((item) => item.type === 'life')?.hkdHave, 0)
+assert.equal(usdOnly.findings.find((item) => item.type === 'life')?.hkdGap, 9600000)
+assert.match(usdOnly.findings.find((item) => item.type === 'life')?.note ?? '', /沒有兌換/)
+
+const single = analyzeClient(sampleClient({ maritalStatus: 'single', dependents: 0, monthlyIncome: 20000 }), [])
+assert.equal(single.findings.find((item) => item.type === 'life')?.hkdNeed, 1200000)
+assert.equal(single.lifeYears, 5)
+
+const ward = analyzeClient(family, [policy('ward', { ...medical, roomLevel: 'ward', fullCover: true, policyNumber: 'W' })])
+assert.equal(ward.findings.find((item) => item.type === 'medical')?.verdict, 'raise')
+
+const partial = analyzeClient(family, [policy('part', medical)])
+assert.equal(partial.findings.find((item) => item.type === 'medical')?.verdict, 'raise')
+
+const noIncome = analyzeClient(sampleClient({ monthlyIncome: null }), [policy('life2', life)])
+assert.equal(noIncome.findings.find((item) => item.type === 'life')?.verdict, 'unknown')
+assert.equal(noIncome.annualIncome, null)
+
 console.log('selfcheck ok')
+
+function sampleClient(patch: Partial<Client>): Client {
+  return {
+    id: 'c',
+    chineseName: '陳大文',
+    englishName: '',
+    gender: 'male',
+    dateOfBirth: '1980-06-07',
+    phone: '',
+    email: '',
+    hkid: '',
+    occupation: '',
+    maritalStatus: 'married',
+    dependents: 2,
+    monthlyIncome: 80000,
+    address: '',
+    notes: '',
+    createdAt: '',
+    updatedAt: '',
+    ...patch,
+  }
+}
 
 function policy(id: string, input: PolicyWrite): Policy {
   return {

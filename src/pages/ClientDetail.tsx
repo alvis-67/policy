@@ -149,6 +149,9 @@ export function ClientDetail() {
           <Link className="btn btn-primary" to={`/clients/${client.id}/report`}>
             儲存為 PDF
           </Link>
+          <Link className="btn btn-ghost" to={`/analysis/${client.id}`}>
+            保障分析
+          </Link>
           <button type="button" className="btn btn-ghost" onClick={() => setEditing(true)}>
             編輯資料
           </button>

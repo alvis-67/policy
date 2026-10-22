@@ -46,7 +46,7 @@ export function Dashboard() {
     <div className="stack-lg">
       <PageHeader
         title="總覽"
-        description="客戶與保單放在同一個紀錄。日後的保障分析會直接使用這些資料。"
+        description="客戶與保單放在同一個紀錄。保障分析會直接使用這些資料。"
         action={
           <Link className="btn btn-primary" to="/clients?new=1">
             新增客戶
@@ -83,7 +83,7 @@ export function Dashboard() {
           {summary.clientCount === 0 ? (
             <EmptyState
               title="尚未有客戶紀錄"
-              body="新增客戶並輸入現有保單後，這些資料會直接用於日後的保障分析。"
+              body="新增客戶並輸入現有保單後，就可以在保障分析看夠不夠。"
               action={
                 <Link className="btn btn-primary" to="/clients?new=1">
                   新增第一位客戶
@@ -145,7 +145,6 @@ export function Dashboard() {
               </div>
             </section>
           ) : null}
-          <section className="notice">保障分析尚未推出。推出時會用同一套客戶及保單資料，看人壽、危疾、醫療及意外保障是否足夠。</section>
         </>
       ) : null}
     </div>

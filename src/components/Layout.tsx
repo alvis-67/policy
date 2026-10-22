@@ -33,10 +33,10 @@ export function Layout() {
             <ListIcon />
             名稱
           </NavLink>
-          <div className="soon" title="即將推出，會使用同一套客戶及保單資料">
-            <span>保障分析</span>
-            <span className="tag">即將推出</span>
-          </div>
+          <NavLink to="/analysis" className={navClass}>
+            <ScaleIcon />
+            保障分析
+          </NavLink>
         </nav>
         <div className="sidebar-note">
           <p>只有已登入的帳號可以查看資料，資料存放在 Supabase。</p>
@@ -90,6 +90,16 @@ function ListIcon() {
       <circle cx="2.4" cy="3.5" r="0.8" fill="currentColor" />
       <circle cx="2.4" cy="8" r="0.8" fill="currentColor" />
       <circle cx="2.4" cy="12.5" r="0.8" fill="currentColor" />
+    </svg>
+  )
+}
+
+function ScaleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M8 2.2v11.2M3.2 13.4h9.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M8 3.6 3.4 6.2M8 3.6l4.6 2.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M2.2 6.2h2.4l-1.2 2.6-1.2-2.6ZM11.4 6.2h2.4L12.6 8.8l-1.2-2.6Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
     </svg>
   )
 }
