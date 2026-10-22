@@ -1,5 +1,6 @@
 import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'react'
-import { api, errorMessage } from '../api'
+import { errorMessage } from '../api'
+import { loadCatalog, rememberChoice, type CatalogBook } from '../lib/catalog'
 import { formatMoney, toAnnualPremium, toMonthlyPremium } from '../lib/format'
 import {
   CURRENCIES,
@@ -7,7 +8,6 @@ import {
   POLICY_STATUSES,
   POLICY_TYPES,
   PREMIUM_FREQUENCIES,
-  type PolicyType,
 } from '../lib/labels'
 import { parseOptionalNumber, parseRequiredNumber } from '../lib/parse'
 import { catalogProducts } from '../lib/products'
@@ -32,12 +32,6 @@ interface PolicyFormState {
   premiumTerm: string
   status: string
   notes: string
-}
-
-interface SavedPolicyName {
-  insurer: string
-  policyType: PolicyType
-  policyName: string
 }
 
 function unique(values: Array<string | undefined>) {
@@ -94,17 +88,21 @@ function insurerNameOf(form: PolicyFormState) {
   return form.insurerSelect === OTHER_INSURER ? form.insurerCustom.trim() : form.insurerSelect.trim()
 }
 
-function policyNameOptions(insurer: string, policyType: string, saved: SavedPolicyName[], extra?: string) {
-  return unique([
-    ...catalogProducts(insurer, policyType),
-    ...saved.filter((item) => item.insurer === insurer && item.policyType === policyType).map((item) => item.policyName),
-    extra,
-  ])
+function namesFor(book: CatalogBook | null, insurer: string, policyType: string, extra?: string) {
+  const listed = book
+    ? book.products.filter((item) => item.insurerName === insurer && item.policyType === policyType).map((item) => item.name)
+    : catalogProducts(insurer, policyType)
+  return unique([...listed, extra])
+}
+
+function insurersFor(book: CatalogBook | null, extra?: string) {
+  const listed = book?.insurers.length ? book.insurers.map((item) => item.name) : [...INSURERS]
+  return unique([...listed, extra])
 }
 
 export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onSubmit: (input: PolicyWrite) => Promise<void> }) {
   const [form, setForm] = useState<PolicyFormState>(() => (initial ? fromPolicy(initial) : emptyState()))
-  const [saved, setSaved] = useState<SavedPolicyName[]>([])
+  const [book, setBook] = useState<CatalogBook | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const errorRef = useRef<HTMLDivElement>(null)
@@ -112,9 +110,9 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
 
   useEffect(() => {
     let active = true
-    api.policyChoices().then(
-      (choices) => {
-        if (active) setSaved(choices)
+    loadCatalog().then(
+      (next) => {
+        if (active) setBook(next)
       },
       () => {},
     )
@@ -130,12 +128,8 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
   const insurerName = insurerNameOf(form)
   const keptName =
     initial && initial.insurer === insurerName && initial.policyType === form.policyType ? initial.policyName : undefined
-  const nameOptions = policyNameOptions(insurerName, form.policyType, saved, keptName)
-  const insurerOptions = unique([
-    ...INSURERS,
-    ...saved.map((item) => item.insurer).filter((name) => !INSURERS.includes(name)),
-    initial?.insurer,
-  ])
+  const nameOptions = namesFor(book, insurerName, form.policyType, keptName)
+  const insurerOptions = insurersFor(book, initial?.insurer)
   const namesReady = Boolean(insurerName && form.policyType)
 
   function onChange(event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
@@ -143,9 +137,9 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
     setForm((current) => ({ ...current, [name]: value }))
   }
 
-  function keepName(current: PolicyFormState, insurer: string, policyType: string, savedNames: SavedPolicyName[]) {
+  function keepName(current: PolicyFormState, insurer: string, policyType: string) {
     const extra = initial && initial.insurer === insurer && initial.policyType === policyType ? initial.policyName : undefined
-    const options = policyNameOptions(insurer, policyType, savedNames, extra)
+    const options = namesFor(book, insurer, policyType, extra)
     if (current.policyNameSelect === NEW_POLICY_NAME || options.includes(current.policyNameSelect)) return current
     return { ...current, policyNameSelect: '', policyNameCustom: '' }
   }
@@ -154,19 +148,19 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
     setForm((current) => {
       const next = { ...current, insurerSelect: value, insurerCustom: value === OTHER_INSURER ? current.insurerCustom : '' }
       const insurer = value === OTHER_INSURER ? next.insurerCustom.trim() : value.trim()
-      return keepName(next, insurer, next.policyType, saved)
+      return keepName(next, insurer, next.policyType)
     })
   }
 
   function onInsurerCustom(value: string) {
     setForm((current) => {
       const next = { ...current, insurerCustom: value }
-      return keepName(next, value.trim(), next.policyType, saved)
+      return keepName(next, value.trim(), next.policyType)
     })
   }
 
   function onPolicyType(value: string) {
-    setForm((current) => keepName({ ...current, policyType: value }, insurerNameOf(current), value, saved))
+    setForm((current) => keepName({ ...current, policyType: value }, insurerNameOf(current), value))
   }
 
   function onPolicyNameSelect(value: string) {
@@ -258,6 +252,7 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
     setError(null)
     try {
       await onSubmit(input)
+      void rememberChoice(insurer, policyType, policyName)
     } catch (reason) {
       setError(errorMessage(reason))
     } finally {

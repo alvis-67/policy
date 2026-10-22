@@ -414,6 +414,115 @@ textarea {
   margin-top: 0.7rem;
 }
 
+.catalog-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.catalog-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1rem 0.35rem;
+}
+
+.catalog-head .section-title {
+  margin: 0;
+}
+
+.catalog-type {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 8.5rem;
+}
+
+.catalog-type select {
+  width: 100%;
+  border: 1px solid var(--color-line);
+  border-radius: 0.7rem;
+  background: white;
+  padding: 0.45rem 0.6rem;
+}
+
+.catalog-list {
+  max-height: 32rem;
+  overflow: auto;
+}
+
+.catalog-list .list-row {
+  flex-wrap: wrap;
+}
+
+.linkish:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.list-row.selected {
+  background: white;
+  box-shadow: inset 3px 0 0 var(--color-pine);
+}
+
+.catalog-pick {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+span.catalog-pick {
+  cursor: default;
+}
+
+.row-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.65rem;
+}
+
+.add-row {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem 1rem;
+}
+
+.add-row.inline {
+  flex: 1;
+  padding: 0;
+}
+
+.add-row input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--color-line);
+  border-radius: 0.7rem;
+  background: white;
+  padding: 0.55rem 0.7rem;
+}
+
+.catalog-empty {
+  margin: 0;
+  padding: 0.4rem 1rem 1rem;
+}
+
+@media (max-width: 860px) {
+  .catalog-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .row-actions {
+    gap: 0.45rem;
+  }
+}
+
 .search input:focus,
 .field input:focus,
 .field select:focus,

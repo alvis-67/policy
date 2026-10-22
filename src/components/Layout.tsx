@@ -28,6 +28,10 @@ export function Layout() {
             <PersonIcon />
             客戶
           </NavLink>
+          <NavLink to="/catalog" className={navClass}>
+            <ListIcon />
+            名稱
+          </NavLink>
           <div className="soon" title="即將推出，會使用同一套客戶及保單資料">
             <span>保障分析</span>
             <span className="tag">即將推出</span>
@@ -74,6 +78,17 @@ function GridIcon() {
       <rect x="9.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" />
       <rect x="1.5" y="9.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" />
       <rect x="9.5" y="9.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  )
+}
+
+function ListIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M5 3.5h8.5M5 8h8.5M5 12.5h8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="2.4" cy="3.5" r="0.8" fill="currentColor" />
+      <circle cx="2.4" cy="8" r="0.8" fill="currentColor" />
+      <circle cx="2.4" cy="12.5" r="0.8" fill="currentColor" />
     </svg>
   )
 }
