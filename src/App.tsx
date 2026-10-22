@@ -5,12 +5,14 @@ import { Catalog } from './pages/Catalog'
 import { ClientDetail } from './pages/ClientDetail'
 import { Clients } from './pages/Clients'
 import { Dashboard } from './pages/Dashboard'
+import { Report } from './pages/Report'
 
 export function App() {
   return (
     <BrowserRouter>
       <AuthGate>
       <Routes>
+        <Route path="report" element={<Report />} />
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="clients" element={<Clients />} />

@@ -9,8 +9,8 @@ import { MoneyText } from '../components/MoneyText'
 import { PolicyForm } from '../components/PolicyForm'
 import { Stat } from '../components/Stat'
 import { Toast } from '../components/Toast'
-import { calcAge, displayName, formatDate, formatMoney, formatPhone, maskHkid, moneyParts, nameInitial, toAnnualPremium } from '../lib/format'
-import { GENDER_OPTIONS, labelOf, MARITAL_OPTIONS, POLICY_STATUSES, POLICY_TYPES, PREMIUM_FREQUENCIES, PRIMARY_COVER_TYPES, ROOM_LEVELS } from '../lib/labels'
+import { calcAge, displayName, formatCover, formatDate, formatMoney, formatPhone, maskHkid, moneyParts, nameInitial, toAnnualPremium } from '../lib/format'
+import { GENDER_OPTIONS, labelOf, MARITAL_OPTIONS, POLICY_STATUSES, POLICY_TYPES, PREMIUM_FREQUENCIES, PRIMARY_COVER_TYPES } from '../lib/labels'
 import type { Client, ClientDetailResponse, CoverageTypeStat, Policy, PolicyTotals } from '../types'
 
 export function ClientDetail() {
@@ -280,7 +280,7 @@ export function ClientDetail() {
                         {meta ? <div className="subline">{meta}</div> : null}
                       </td>
                       <td>{labelOf(POLICY_TYPES, policy.policyType)}</td>
-                      <td className="num">{coverLabel(policy)}</td>
+                      <td className="num">{formatCover(policy)}</td>
                       <td>{formatDate(policy.issueDate)}</td>
                       <td>
                         <div className="num">{formatMoney(policy.premiumAmount, policy.currency)}</div>
@@ -395,17 +395,6 @@ function CoverCards({ totals }: { totals: PolicyTotals }) {
       ) : null}
     </div>
   )
-}
-
-function coverLabel(policy: Policy) {
-  if (policy.policyType !== 'medical') return policy.sumAssured == null ? '—' : formatMoney(policy.sumAssured, policy.currency)
-  const parts = [
-    policy.roomLevel ? labelOf(ROOM_LEVELS, policy.roomLevel) : '',
-    policy.deductible == null ? '' : `自付費 ${formatMoney(policy.deductible, policy.currency)}`,
-    policy.fullCover == null ? '' : policy.fullCover ? '全包賠償' : '非全包',
-  ].filter(Boolean)
-  if (parts.length > 0) return parts.join(' · ')
-  return policy.sumAssured == null ? '—' : formatMoney(policy.sumAssured, policy.currency)
 }
 
 function CoverCard({ label, stat, empty }: { label: string; stat: CoverageTypeStat; empty?: string }) {

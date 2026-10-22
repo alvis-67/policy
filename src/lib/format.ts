@@ -1,4 +1,4 @@
-import { CURRENCIES, type Currency, type PremiumFrequency } from './labels'
+import { CURRENCIES, ROOM_LEVELS, labelOf, type Currency, type PremiumFrequency } from './labels'
 
 export type MoneyBag = Partial<Record<Currency, number>>
 
@@ -28,6 +28,24 @@ export function formatMoney(amount: number, currency: Currency) {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   }).format(amount)
+}
+
+export function formatCover(policy: {
+  policyType: string
+  currency: Currency
+  sumAssured: number | null
+  roomLevel: string
+  deductible: number | null
+  fullCover: boolean | null
+}) {
+  if (policy.policyType !== 'medical') return policy.sumAssured == null ? '—' : formatMoney(policy.sumAssured, policy.currency)
+  const parts = [
+    policy.roomLevel ? labelOf(ROOM_LEVELS, policy.roomLevel) : '',
+    policy.deductible == null ? '' : `自付費 ${formatMoney(policy.deductible, policy.currency)}`,
+    policy.fullCover == null ? '' : policy.fullCover ? '全包賠償' : '非全包',
+  ].filter(Boolean)
+  if (parts.length > 0) return parts.join(' · ')
+  return policy.sumAssured == null ? '—' : formatMoney(policy.sumAssured, policy.currency)
 }
 
 export function moneyParts(bag: MoneyBag) {
