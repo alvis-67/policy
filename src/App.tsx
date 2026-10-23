@@ -7,6 +7,7 @@ import { ClientDetail } from './pages/ClientDetail'
 import { Clients } from './pages/Clients'
 import { Dashboard } from './pages/Dashboard'
 import { LifePlanDetail, LifePlans } from './pages/LifePlan'
+import { LifeReport } from './pages/LifeReport'
 import { Report } from './pages/Report'
 
 export function App() {
@@ -15,6 +16,7 @@ export function App() {
       <AuthGate>
       <Routes>
         <Route path="clients/:id/report" element={<Report />} />
+        <Route path="finance/:id/report" element={<LifeReport />} />
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="clients" element={<Clients />} />

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, errorMessage, type SavedLifePlan } from '../api'
 import { EmptyState } from '../components/EmptyState'
@@ -97,9 +97,10 @@ export function LifePlans() {
                 <span className="avatar sm">{nameInitial(client)}</span>
                 <span>
                   <span className="name-link">{displayName(client)}</span>
-                  <span className="subline">{result ? (result.gap > 0 ? `尚欠人壽 ${formatNeed(result.gap)}` : '現有資金和人壽已足夠') : '未填寫'}</span>
+                  <span className="subline">{result ? (result.gap > 0 ? '尚須補足人壽保障' : '現有資源已足夠') : '尚未開始分析'}</span>
                 </span>
               </span>
+              <span className="life-gap">{result ? (result.gap > 0 ? formatNeed(result.gap) : '已足夠') : '—'}</span>
             </Link>
           ))}
         </div>
@@ -118,6 +119,7 @@ export function LifePlanDetail() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [dirty, setDirty] = useState(false)
 
   useEffect(() => {
     let cancel = false
@@ -129,6 +131,8 @@ export function LifePlanDetail() {
         setPolicies(detail.policies)
         setDraft(savedPlan.plan ? draftFromPlan(savedPlan.plan) : emptyDraft())
         setReady(savedPlan.ready)
+        setSaved(savedPlan.plan != null)
+        setDirty(false)
         setLoading(false)
       })
       .catch((reason) => {
@@ -151,6 +155,7 @@ export function LifePlanDetail() {
   function update(next: LifeDraft) {
     setDraft(next)
     setSaved(false)
+    setDirty(true)
   }
 
   async function save() {
@@ -166,6 +171,7 @@ export function LifePlanDetail() {
       await api.saveLifePlan(client.id, checked.plan)
       setError(null)
       setSaved(true)
+      setDirty(false)
     } catch (reason) {
       setError(errorMessage(reason))
       setSaved(false)
@@ -203,9 +209,20 @@ export function LifePlanDetail() {
         title={client.chineseName.trim() || client.englishName.trim() || '未命名客戶'}
         description={client.chineseName.trim() && client.englishName.trim() ? client.englishName.trim() : undefined}
         action={
-          <Link className="btn btn-ghost" to={`/clients/${client.id}`}>
-            查看保單
-          </Link>
+          <div className="actions">
+            <Link className="btn btn-ghost" to={`/clients/${client.id}`}>
+              查看保單
+            </Link>
+            {dirty ? (
+              <button type="button" className="btn btn-primary" onClick={() => setError('請先儲存分析，報告會用已儲存的內容。')}>
+                匯出報告
+              </button>
+            ) : (
+              <Link className="btn btn-primary" to={`/finance/${client.id}/report`}>
+                匯出報告
+              </Link>
+            )}
+          </div>
         }
       />
       {!ready ? <section className="notice">{SQL_NOTICE}</section> : null}
@@ -217,7 +234,9 @@ export function LifePlanDetail() {
       <div className="life-layout">
         <div className="stack">
           <section className="card pad">
-            <h2 className="section-title">個人資料</h2>
+            <p className="life-kicker">
+              <span>01</span>個人資料
+            </p>
             <dl className="profile-grid" style={{ marginTop: '1rem' }}>
               <Info label="年齡" value={age == null ? '未有出生日期' : `${age}歲`} />
               <Info label="性別" value={client.gender ? labelOf(GENDER_OPTIONS, client.gender) : '未有'} />
@@ -233,7 +252,9 @@ export function LifePlanDetail() {
 
           <section className="card pad stack">
             <div className="row-between">
-              <h2 className="section-title">子女</h2>
+              <p className="life-kicker">
+                <span>02</span>子女
+              </p>
               <button type="button" className="btn btn-ghost" onClick={() => update(addMember(draft, 'child'))}>
                 加子女
               </button>
@@ -247,7 +268,9 @@ export function LifePlanDetail() {
 
           <section className="card pad stack">
             <div className="row-between">
-              <h2 className="section-title">父母</h2>
+              <p className="life-kicker">
+                <span>03</span>父母
+              </p>
               <button type="button" className="btn btn-ghost" onClick={() => update(addMember(draft, 'parent'))}>
                 加父母
               </button>
@@ -268,6 +291,7 @@ export function LifePlanDetail() {
           </section>
 
           <MoneySection
+            index="04"
             title="債務"
             hint="房貸、私人貸款等尚未還清的金額。"
             rows={draft.debts}
@@ -275,7 +299,10 @@ export function LifePlanDetail() {
             onChange={(debts) => update({ ...draft, debts })}
           />
           <section className="card pad">
-            <Field label="身後費用" htmlFor="funeralCost" hint="殯葬等一次過開支。">
+            <p className="life-kicker">
+              <span>05</span>身後費用
+            </p>
+            <Field label="殯葬及其他一次過開支" htmlFor="funeralCost" hint="這筆費用會加進人壽需要。">
               <input
                 id="funeralCost"
                 inputMode="decimal"
@@ -286,8 +313,9 @@ export function LifePlanDetail() {
             </Field>
           </section>
           <MoneySection
+            index="06"
             title="現有資金"
-            hint="這些金額會從人壽需要扣除。"
+            hint="現金、投資、強積金和儲蓄會從人壽需要扣除。"
             rows={draft.assets}
             presets={['現金', '投資', '強積金', '儲蓄']}
             onChange={(assets) => update({ ...draft, assets })}
@@ -345,12 +373,14 @@ function MemberRow({ member, onChange, onRemove }: { member: LifeDraftMember; on
 }
 
 function MoneySection({
+  index,
   title,
   hint,
   rows,
   presets,
   onChange,
 }: {
+  index: string
   title: string
   hint: string
   rows: LifeDraftItem[]
@@ -360,7 +390,10 @@ function MoneySection({
   return (
     <section className="card pad stack">
       <div className="row-between">
-        <h2 className="section-title">{title}</h2>
+        <p className="life-kicker">
+          <span>{index}</span>
+          {title}
+        </p>
         <button type="button" className="btn btn-ghost" onClick={() => onChange([...rows, blankItem('')])}>
           加一項
         </button>
@@ -373,7 +406,7 @@ function MoneySection({
           </button>
         ))}
       </div>
-      {rows.length === 0 ? <p className="muted">未有{title}。</p> : null}
+      {rows.length === 0 ? <p className="muted">尚未加入。</p> : null}
       {rows.map((row) => (
         <div key={row.id} className="life-money">
           <Field label="名稱" htmlFor={`item-name-${row.id}`}>
@@ -399,37 +432,59 @@ function MoneySection({
 
 function NeedResult({ result, started }: { result: LifeNeedResult; started: boolean }) {
   const shortfall = Math.max(0, result.gap)
-  const surplus = Math.max(0, -result.gap)
+  const shown = useAnimatedAmount(shortfall)
+  const covered = result.assetTotal + result.lifeHkd
+  const ratio = result.grossNeed > 0 ? Math.min(1, covered / result.grossNeed) : 0
   return (
-    <aside className="card pad life-result">
-      <p className="dt">尚欠人壽</p>
-      <p className="life-total">{formatNeed(shortfall)}</p>
-      {surplus > 0 ? <p className="hint">現有資金和人壽多於需要 {formatNeed(surplus)}。</p> : null}
-      {!started ? <p className="hint">未填家庭負擔、債務、資金或身後費用。這個數字尚未計完。</p> : null}
-      <dl className="analysis-facts">
-        <Fact label="子女照顧" value={formatNeed(result.childTotal)} />
-        <Fact label="父母照顧" value={formatNeed(result.parentTotal)} />
-        <Fact label="債務" value={formatNeed(result.debtTotal)} />
-        <Fact label="身後費用" value={formatNeed(result.funeralCost)} />
-        <Fact label="需要合計" value={formatNeed(result.grossNeed)} />
-        <Fact label="現有資金" value={formatNeed(result.assetTotal)} />
-        <Fact label="現有人壽" value={`${formatNeed(result.lifeHkd)} · ${result.lifeCount} 張`} />
-      </dl>
-      {result.lines.length > 0 ? (
-        <ul className="analysis-follow">
-          {result.lines.map((line) => (
-            <li key={line.id}>
-              {line.role === 'child' ? '子女' : '父母'}
-              {line.name ? ` ${line.name}` : ''} · {line.age}歲 · 每月 {formatNeed(line.monthlyCost)} · 照顧 {line.years} 年
-              {line.role === 'parent' ? ` · ${line.share} 人分擔` : ''} · {formatNeed(line.amount)}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {result.foreignLife ? <p className="hint">另有{result.foreignLife}人壽。沒有兌換，亦沒有從港幣需要扣除。</p> : null}
-      <p className="hint">只扣除生效中和已繳清的人壽。已失效和已退保不計。</p>
+    <aside className="life-result">
+      <div className="life-result-head">
+        <p className="dt">尚欠人壽保障</p>
+        <p className="life-total">{formatNeed(shown)}</p>
+        {result.gap < 0 ? <p className="hint">現有資金和人壽多於需要 {formatNeed(-result.gap)}。</p> : null}
+        {!started ? <p className="hint">填上照顧費、債務或資金後，這個數字會即時更新。</p> : <p className="hint">現有資源已覆蓋需要的 {Math.round(ratio * 100)}%。</p>}
+        <div className="life-meter" aria-hidden="true">
+          <span style={{ width: `${Math.round(ratio * 100)}%` }} />
+        </div>
+      </div>
+      <div className="life-result-body">
+        <dl className="analysis-facts">
+          <Fact label="子女照顧" value={formatNeed(result.childTotal)} />
+          <Fact label="父母照顧" value={formatNeed(result.parentTotal)} />
+          <Fact label="債務" value={formatNeed(result.debtTotal)} />
+          <Fact label="身後費用" value={formatNeed(result.funeralCost)} />
+          <Fact label="需要合計" value={formatNeed(result.grossNeed)} />
+          <Fact label="現有資金" value={formatNeed(result.assetTotal)} />
+          <Fact label="現有人壽" value={`${formatNeed(result.lifeHkd)} · ${result.lifeCount} 張`} />
+        </dl>
+        {result.foreignLife ? <p className="hint">另有{result.foreignLife}人壽，沒有兌換，亦沒有從港幣差額扣除。</p> : null}
+      </div>
     </aside>
   )
+}
+
+function useAnimatedAmount(value: number) {
+  const [shown, setShown] = useState(value)
+  const from = useRef(value)
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      from.current = value
+      setShown(value)
+      return
+    }
+    const start = from.current
+    const began = performance.now()
+    let frame = 0
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - began) / 680)
+      const eased = 1 - (1 - progress) ** 3
+      setShown(Math.round(start + (value - start) * eased))
+      if (progress < 1) frame = requestAnimationFrame(tick)
+      else from.current = value
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [value])
+  return shown
 }
 
 function Fact({ label, value }: { label: string; value: string }) {
