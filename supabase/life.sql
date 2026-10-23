@@ -6,6 +6,13 @@ create table if not exists public.life_plans (
   user_id uuid not null references auth.users (id) on delete cascade,
   funeral_cost numeric not null default 0 check (funeral_cost >= 0),
   sibling_count integer not null default 1 check (sibling_count between 1 and 20),
+  inflation_rate numeric not null default 0,
+  child_until integer not null default 22,
+  parent_until integer not null default 88,
+  reserve_amount numeric not null default 0,
+  spouse_age integer,
+  spouse_monthly numeric,
+  spouse_until integer,
   members jsonb not null default '[]'::jsonb,
   debts jsonb not null default '[]'::jsonb,
   assets jsonb not null default '[]'::jsonb,
@@ -14,6 +21,31 @@ create table if not exists public.life_plans (
 );
 
 create index if not exists life_plans_user_idx on public.life_plans (user_id);
+
+alter table public.life_plans add column if not exists inflation_rate numeric not null default 0;
+alter table public.life_plans drop constraint if exists life_plans_inflation_rate_check;
+alter table public.life_plans add constraint life_plans_inflation_rate_check
+  check (inflation_rate >= 0 and inflation_rate <= 20);
+
+alter table public.life_plans add column if not exists child_until integer not null default 22;
+alter table public.life_plans add column if not exists parent_until integer not null default 88;
+alter table public.life_plans add column if not exists reserve_amount numeric not null default 0;
+alter table public.life_plans add column if not exists spouse_age integer;
+alter table public.life_plans add column if not exists spouse_monthly numeric;
+alter table public.life_plans add column if not exists spouse_until integer;
+
+alter table public.life_plans drop constraint if exists life_plans_child_until_check;
+alter table public.life_plans add constraint life_plans_child_until_check check (child_until between 1 and 40);
+alter table public.life_plans drop constraint if exists life_plans_parent_until_check;
+alter table public.life_plans add constraint life_plans_parent_until_check check (parent_until between 50 and 120);
+alter table public.life_plans drop constraint if exists life_plans_reserve_amount_check;
+alter table public.life_plans add constraint life_plans_reserve_amount_check check (reserve_amount >= 0);
+alter table public.life_plans drop constraint if exists life_plans_spouse_age_check;
+alter table public.life_plans add constraint life_plans_spouse_age_check check (spouse_age is null or spouse_age between 0 and 120);
+alter table public.life_plans drop constraint if exists life_plans_spouse_monthly_check;
+alter table public.life_plans add constraint life_plans_spouse_monthly_check check (spouse_monthly is null or spouse_monthly >= 0);
+alter table public.life_plans drop constraint if exists life_plans_spouse_until_check;
+alter table public.life_plans add constraint life_plans_spouse_until_check check (spouse_until is null or spouse_until between 1 and 120);
 
 drop trigger if exists life_plans_touch on public.life_plans;
 create trigger life_plans_touch

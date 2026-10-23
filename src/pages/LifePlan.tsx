@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, errorMessage, type SavedLifePlan } from '../api'
 import { EmptyState } from '../components/EmptyState'
@@ -13,8 +13,8 @@ import {
   formatNeed,
   planHasInputs,
   previewDraft,
-  supportYears,
   validateDraft,
+  yearsUntil,
   type LifeDraft,
   type LifeDraftItem,
   type LifeDraftMember,
@@ -259,10 +259,18 @@ export function LifePlanDetail() {
                 加子女
               </button>
             </div>
-            <p className="hint">0 歲照顧到 22 歲大學畢業。已滿 22 歲不再計照顧費。</p>
+            <Field label="照顧至幾歲" htmlFor="childUntil" hint="預設 22 歲，一般是大學畢業。每月只計生活費，供樓餘額請放在債務。歲數需每年更新一次。">
+              <input id="childUntil" inputMode="numeric" value={draft.childUntil} onChange={(event) => update({ ...draft, childUntil: event.target.value })} />
+            </Field>
             {children.length === 0 ? <p className="muted">未有子女。</p> : null}
             {children.map((member) => (
-              <MemberRow key={member.id} member={member} onChange={(next) => update(replaceMember(draft, next))} onRemove={() => update(removeMember(draft, member.id))} />
+              <MemberRow
+                key={member.id}
+                member={member}
+                until={shownUntil(draft.childUntil, 22, 1, 40)}
+                onChange={(next) => update(replaceMember(draft, next))}
+                onRemove={() => update(removeMember(draft, member.id))}
+              />
             ))}
           </section>
 
@@ -283,15 +291,47 @@ export function LifePlanDetail() {
                 onChange={(event) => update({ ...draft, siblingCount: event.target.value })}
               />
             </Field>
-            <p className="hint">由現在照顧到 88 歲。</p>
+            <Field label="照顧至幾歲" htmlFor="parentUntil" hint="預設 88 歲。每月只計生活費，供樓餘額請放在債務。歲數需每年更新一次。">
+              <input id="parentUntil" inputMode="numeric" value={draft.parentUntil} onChange={(event) => update({ ...draft, parentUntil: event.target.value })} />
+            </Field>
             {parents.length === 0 ? <p className="muted">未有父母。</p> : null}
             {parents.map((member) => (
-              <MemberRow key={member.id} member={member} onChange={(next) => update(replaceMember(draft, next))} onRemove={() => update(removeMember(draft, member.id))} />
+              <MemberRow
+                key={member.id}
+                member={member}
+                until={shownUntil(draft.parentUntil, 88, 50, 120)}
+                onChange={(next) => update(replaceMember(draft, next))}
+                onRemove={() => update(removeMember(draft, member.id))}
+              />
             ))}
           </section>
 
+          <section className="card pad stack">
+            <p className="life-kicker">
+              <span>04</span>配偶
+            </p>
+            <p className="hint">可留空。只填配偶每月仍短缺的生活費，不要填客人的全部收入。</p>
+            <div className="life-row">
+              <Field label="歲數" htmlFor="spouseAge">
+                <input id="spouseAge" inputMode="numeric" value={draft.spouseAge} placeholder="40" onChange={(event) => update({ ...draft, spouseAge: event.target.value })} />
+              </Field>
+              <Field label="每月短缺" htmlFor="spouseMonthly">
+                <input
+                  id="spouseMonthly"
+                  inputMode="decimal"
+                  value={draft.spouseMonthly}
+                  placeholder="15000"
+                  onChange={(event) => update({ ...draft, spouseMonthly: event.target.value })}
+                />
+              </Field>
+              <Field label="照顧至幾歲" htmlFor="spouseUntil">
+                <input id="spouseUntil" inputMode="numeric" value={draft.spouseUntil} placeholder="65" onChange={(event) => update({ ...draft, spouseUntil: event.target.value })} />
+              </Field>
+            </div>
+          </section>
+
           <MoneySection
-            index="04"
+            index="05"
             title="債務"
             hint="房貸、私人貸款等尚未還清的金額。"
             rows={draft.debts}
@@ -300,7 +340,7 @@ export function LifePlanDetail() {
           />
           <section className="card pad">
             <p className="life-kicker">
-              <span>05</span>身後費用
+              <span>06</span>身後費用
             </p>
             <Field label="殯葬及其他一次過開支" htmlFor="funeralCost" hint="這筆費用會加進人壽需要。">
               <input
@@ -313,12 +353,23 @@ export function LifePlanDetail() {
             </Field>
           </section>
           <MoneySection
-            index="06"
+            index="07"
             title="現有資金"
-            hint="現金、投資、強積金和儲蓄會從人壽需要扣除。"
+            hint="現金、投資、強積金和儲蓄會用來扣減人壽需要。儲蓄保單和投資相連不會自動扣除。"
             rows={draft.assets}
             presets={['現金', '投資', '強積金', '儲蓄']}
             onChange={(assets) => update({ ...draft, assets })}
+            extra={
+              <Field label="保留應急資金" htmlFor="reserveAmount" hint="預設 0。這筆錢留在家裡，不會從人壽需要扣除。">
+                <input
+                  id="reserveAmount"
+                  inputMode="decimal"
+                  value={draft.reserveAmount}
+                  placeholder="0"
+                  onChange={(event) => update({ ...draft, reserveAmount: event.target.value })}
+                />
+              </Field>
+            }
           />
           <div className="actions">
             <button type="button" className="btn btn-primary" onClick={() => void save()} disabled={saving}>
@@ -327,7 +378,12 @@ export function LifePlanDetail() {
             {saved ? <span className="hint">已儲存</span> : null}
           </div>
         </div>
-        <NeedResult result={result} started={planHasInputs(preview)} />
+        <NeedResult
+          result={result}
+          started={planHasInputs(preview)}
+          rateText={draft.inflationRate}
+          onRate={(inflationRate) => update({ ...draft, inflationRate })}
+        />
       </div>
     </div>
   )
@@ -342,9 +398,19 @@ function Info({ label, value }: { label: string; value: string }) {
   )
 }
 
-function MemberRow({ member, onChange, onRemove }: { member: LifeDraftMember; onChange: (member: LifeDraftMember) => void; onRemove: () => void }) {
+function MemberRow({
+  member,
+  until,
+  onChange,
+  onRemove,
+}: {
+  member: LifeDraftMember
+  until: number
+  onChange: (member: LifeDraftMember) => void
+  onRemove: () => void
+}) {
   const age = /^\d+$/.test(member.age.trim()) ? Number(member.age) : null
-  const years = age == null || age > 120 ? null : supportYears(member.role, age)
+  const years = age == null || age > 120 ? null : yearsUntil(age, until)
   return (
     <div className="life-row">
       <Field label="稱呼" htmlFor={`name-${member.id}`}>
@@ -378,6 +444,7 @@ function MoneySection({
   hint,
   rows,
   presets,
+  extra,
   onChange,
 }: {
   index: string
@@ -385,6 +452,7 @@ function MoneySection({
   hint: string
   rows: LifeDraftItem[]
   presets: string[]
+  extra?: ReactNode
   onChange: (rows: LifeDraftItem[]) => void
 }) {
   return (
@@ -399,6 +467,7 @@ function MoneySection({
         </button>
       </div>
       <p className="hint">{hint}</p>
+      {extra}
       <div className="actions" style={{ justifyContent: 'flex-start' }}>
         {presets.map((name) => (
           <button key={name} type="button" className="btn btn-ghost" onClick={() => onChange([...rows, { ...blankItem(name), name }])}>
@@ -430,11 +499,22 @@ function MoneySection({
   )
 }
 
-function NeedResult({ result, started }: { result: LifeNeedResult; started: boolean }) {
+function NeedResult({
+  result,
+  started,
+  rateText,
+  onRate,
+}: {
+  result: LifeNeedResult
+  started: boolean
+  rateText: string
+  onRate: (rate: string) => void
+}) {
   const shortfall = Math.max(0, result.gap)
   const shown = useAnimatedAmount(shortfall)
-  const covered = result.assetTotal + result.lifeHkd
+  const covered = result.deductibleAssets + result.lifeHkd
   const ratio = result.grossNeed > 0 ? Math.min(1, covered / result.grossNeed) : 0
+  const extra = Math.max(0, result.gap - result.gapWithoutInflation)
   return (
     <aside className="life-result">
       <div className="life-result-head">
@@ -442,6 +522,21 @@ function NeedResult({ result, started }: { result: LifeNeedResult; started: bool
         <p className="life-total">{formatNeed(shown)}</p>
         {result.gap < 0 ? <p className="hint">現有資金和人壽多於需要 {formatNeed(-result.gap)}。</p> : null}
         {!started ? <p className="hint">填上照顧費、債務或資金後，這個數字會即時更新。</p> : <p className="hint">現有資源已覆蓋需要的 {Math.round(ratio * 100)}%。</p>}
+        {result.inflationRate > 0 ? (
+          <p className="hint">
+            通脹 0% 時尚欠 {formatNeed(Math.max(0, result.gapWithoutInflation))}，每年 {result.inflationRate}% 令需要多 {formatNeed(extra)}。
+          </p>
+        ) : (
+          <p className="hint">照顧費未計通脹。可試 1%、2%、3%。</p>
+        )}
+        <div className="life-rates">
+          {['0', '1', '2', '3'].map((rate) => (
+            <button key={rate} type="button" className={Number(rateText || '0') === Number(rate) ? 'is-on' : ''} onClick={() => onRate(rate)}>
+              {rate}%
+            </button>
+          ))}
+          <input aria-label="每年通脹" inputMode="decimal" value={rateText} onChange={(event) => onRate(event.target.value)} />
+        </div>
         <div className="life-meter" aria-hidden="true">
           <span style={{ width: `${Math.round(ratio * 100)}%` }} />
         </div>
@@ -450,10 +545,12 @@ function NeedResult({ result, started }: { result: LifeNeedResult; started: bool
         <dl className="analysis-facts">
           <Fact label="子女照顧" value={formatNeed(result.childTotal)} />
           <Fact label="父母照顧" value={formatNeed(result.parentTotal)} />
+          <Fact label="配偶生活" value={formatNeed(result.spouseTotal)} />
           <Fact label="債務" value={formatNeed(result.debtTotal)} />
           <Fact label="身後費用" value={formatNeed(result.funeralCost)} />
           <Fact label="需要合計" value={formatNeed(result.grossNeed)} />
           <Fact label="現有資金" value={formatNeed(result.assetTotal)} />
+          <Fact label="保留應急" value={formatNeed(result.reserveAmount)} />
           <Fact label="現有人壽" value={`${formatNeed(result.lifeHkd)} · ${result.lifeCount} 張`} />
         </dl>
         {result.foreignLife ? <p className="hint">另有{result.foreignLife}人壽，沒有兌換，亦沒有從港幣差額扣除。</p> : null}
@@ -494,6 +591,12 @@ function Fact({ label, value }: { label: string; value: string }) {
       <dd>{value}</dd>
     </div>
   )
+}
+
+function shownUntil(raw: string, fallback: number, min: number, max: number) {
+  if (!/^\d+$/.test(raw.trim())) return fallback
+  const value = Number(raw)
+  return value < min || value > max ? fallback : value
 }
 
 function addMember(draft: LifeDraft, role: LifeRole): LifeDraft {

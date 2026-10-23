@@ -7,7 +7,18 @@ import { calculateLifeNeed, formatNeed, type LifeNeedResult, type LifePlanInput 
 import type { Client, Policy } from '../types'
 import { APP_VERSION } from '../version'
 
-const EMPTY_PLAN: LifePlanInput = { funeralCost: 0, siblingCount: 1, members: [], debts: [], assets: [] }
+const EMPTY_PLAN: LifePlanInput = {
+  funeralCost: 0,
+  siblingCount: 1,
+  inflationRate: 0,
+  childUntil: 22,
+  parentUntil: 88,
+  reserveAmount: 0,
+  spouse: null,
+  members: [],
+  debts: [],
+  assets: [],
+}
 
 export function LifeReport() {
   const { id = '' } = useParams()
@@ -101,6 +112,14 @@ export function LifeReport() {
             <p>尚欠人壽保障</p>
             <strong>{formatNeed(Math.max(0, result.gap))}</strong>
             {result.gap < 0 ? <span>現有資金和人壽多於需要 {formatNeed(-result.gap)}</span> : <span>扣除現有資金及生效人壽後，仍須補足的保障。</span>}
+            {result.inflationRate > 0 ? (
+              <span>
+                照顧費按每年 {result.inflationRate}% 通脹計算。通脹為 0% 時尚欠 {formatNeed(Math.max(0, result.gapWithoutInflation))}，現多{' '}
+                {formatNeed(Math.max(0, result.gap - result.gapWithoutInflation))}。
+              </span>
+            ) : (
+              <span>照顧費未計通脹。</span>
+            )}
           </section>
 
           {!hasPlan ? <p className="report-note">尚未儲存家庭負擔、債務或資金。以下只反映現有人壽。</p> : null}
@@ -125,8 +144,8 @@ export function LifeReport() {
                 {result.lines.map((line) => (
                   <div key={line.id} className="report-row">
                     <span>
-                      {line.role === 'child' ? '子女' : '父母'}
-                      {line.name ? ` ${line.name}` : ''}
+                    {line.role === 'child' ? '子女' : line.role === 'parent' ? '父母' : '配偶'}
+                    {line.role === 'spouse' ? '' : line.name ? ` ${line.name}` : ''}
                     </span>
                     <span>
                       {line.age}歲 · {line.years} 年{line.role === 'parent' ? ` · ${line.share} 人分擔` : ''}
@@ -179,7 +198,7 @@ export function LifeReport() {
 
           <footer className="report-foot">
             <p>
-              子女由現在照顧至 22 歲，父母照顧至 88 歲。父母每月費用按兄弟姊妹人數分擔，人數連同本人。年收入只作參考，沒有計入需要。港幣、美元和人民幣沒有兌換，外幣人壽沒有從港幣差額扣除。已失效和已退保的保單不計。
+              子女照顧至 {plan.childUntil} 歲，父母照顧至 {plan.parentUntil} 歲。配偶按所填歲數計算每月仍短缺的生活費。每月照顧費只計生活費，供樓餘額放在債務。父母費用按兄弟姊妹人數分擔，人數連同本人。保留應急資金留在家裡，不從需要扣除。通脹只加在照顧費，沒有假設賠償金有投資回報。年收入只作參考。港幣、美元和人民幣沒有兌換，外幣人壽沒有從港幣差額扣除。已失效和已退保的保單不計。歲數需每年更新。
             </p>
             <p>本報告書根據已儲存的分析編製，供這位客戶查閱，並不取代保險合約。保冊 · {APP_VERSION}</p>
           </footer>
@@ -193,10 +212,11 @@ function Waterfall({ result }: { result: LifeNeedResult }) {
   const rows = [
     ['子女照顧', result.childTotal, false],
     ['父母照顧', result.parentTotal, false],
+    ['配偶生活', result.spouseTotal, false],
     ['債務', result.debtTotal, false],
     ['身後費用', result.funeralCost, false],
     ['需要合計', result.grossNeed, false],
-    ['現有資金', result.assetTotal, true],
+    ['現有資金', result.deductibleAssets, true],
     [`現有人壽 · ${result.lifeCount} 張`, result.lifeHkd, true],
   ] as const
   return (
@@ -211,6 +231,11 @@ function Waterfall({ result }: { result: LifeNeedResult }) {
         <span>尚欠人壽</span>
         <strong>{formatNeed(Math.max(0, result.gap))}</strong>
       </div>
+      {result.reserveAmount > 0 ? (
+        <p className="report-note">
+          現有資金 {formatNeed(result.assetTotal)}，已保留應急 {formatNeed(result.reserveAmount)}，用以扣減 {formatNeed(result.deductibleAssets)}。
+        </p>
+      ) : null}
       {result.foreignLife ? <p className="report-note">另有{result.foreignLife}人壽，沒有從上面的港幣差額扣除。</p> : null}
     </>
   )

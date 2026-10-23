@@ -334,6 +334,13 @@ export const api = {
           client_id: clientId,
           funeral_cost: plan.funeralCost,
           sibling_count: plan.siblingCount,
+          inflation_rate: plan.inflationRate,
+          child_until: plan.childUntil,
+          parent_until: plan.parentUntil,
+          reserve_amount: plan.reserveAmount,
+          spouse_age: plan.spouse?.age ?? null,
+          spouse_monthly: plan.spouse?.monthlyCost ?? null,
+          spouse_until: plan.spouse?.untilAge ?? null,
           members: plan.members,
           debts: plan.debts,
           assets: plan.assets,
@@ -365,6 +372,13 @@ interface LifePlanRow {
   client_id: string
   funeral_cost: number | string | null
   sibling_count: number | string | null
+  inflation_rate?: number | string | null
+  child_until?: number | string | null
+  parent_until?: number | string | null
+  reserve_amount?: number | string | null
+  spouse_age?: number | string | null
+  spouse_monthly?: number | string | null
+  spouse_until?: number | string | null
   members: unknown
   debts: unknown
   assets: unknown
@@ -382,6 +396,11 @@ function mapLifePlan(row: LifePlanRow): SavedLifePlan {
     clientId: row.client_id,
     funeralCost: Math.max(0, optionalNumber(row.funeral_cost) ?? 0),
     siblingCount: Math.min(20, Math.max(1, Math.round(siblingCount))),
+    inflationRate: Math.min(20, Math.max(0, optionalNumber(row.inflation_rate ?? null) ?? 0)),
+    childUntil: bounded(row.child_until, 22, 1, 40),
+    parentUntil: bounded(row.parent_until, 88, 50, 120),
+    reserveAmount: Math.max(0, optionalNumber(row.reserve_amount ?? null) ?? 0),
+    spouse: readSpouse(row),
     members: readMembers(row.members),
     debts: readMoneyItems(row.debts, '債務'),
     assets: readMoneyItems(row.assets, '資金'),
@@ -425,6 +444,22 @@ function readMoneyItems(value: unknown, fallback: string): LifeMoneyItem[] {
     })
   })
   return items
+}
+
+function readSpouse(row: LifePlanRow): LifePlanInput['spouse'] {
+  const age = optionalNumber(row.spouse_age ?? null)
+  const monthlyCost = optionalNumber(row.spouse_monthly ?? null)
+  const untilAge = optionalNumber(row.spouse_until ?? null)
+  if (age == null || monthlyCost == null || untilAge == null) return null
+  if (age < 0 || age > 120 || monthlyCost < 0 || untilAge < 1 || untilAge > 120) return null
+  return { age: Math.round(age), monthlyCost, untilAge: Math.round(untilAge) }
+}
+
+function bounded(value: number | string | null | undefined, fallback: number, min: number, max: number) {
+  const number = optionalNumber(value ?? null)
+  if (number == null) return fallback
+  const rounded = Math.round(number)
+  return rounded < min || rounded > max ? fallback : rounded
 }
 
 function asNumber(value: unknown): number | string | null {

@@ -21,9 +21,20 @@ export interface LifeMoneyItem {
   amount: number
 }
 
+export interface LifeSpouse {
+  age: number
+  monthlyCost: number
+  untilAge: number
+}
+
 export interface LifePlanInput {
   funeralCost: number
   siblingCount: number
+  inflationRate: number
+  childUntil: number
+  parentUntil: number
+  reserveAmount: number
+  spouse: LifeSpouse | null
   members: LifeMember[]
   debts: LifeMoneyItem[]
   assets: LifeMoneyItem[]
@@ -46,6 +57,13 @@ export interface LifeDraftItem {
 export interface LifeDraft {
   funeralCost: string
   siblingCount: string
+  inflationRate: string
+  childUntil: string
+  parentUntil: string
+  reserveAmount: string
+  spouseAge: string
+  spouseMonthly: string
+  spouseUntil: string
   members: LifeDraftMember[]
   debts: LifeDraftItem[]
   assets: LifeDraftItem[]
@@ -53,7 +71,7 @@ export interface LifeDraft {
 
 export interface LifeSupportLine {
   id: string
-  role: LifeRole
+  role: LifeRole | 'spouse'
   name: string
   age: number
   years: number
@@ -71,20 +89,46 @@ export interface LifeNeedResult {
   funeralCost: number
   grossNeed: number
   assetTotal: number
+  reserveAmount: number
+  deductibleAssets: number
+  spouseTotal: number
   lifeHkd: number
   lifeCount: number
   foreignLife: string
   gap: number
+  inflationRate: number
+  familyWithoutInflation: number
+  gapWithoutInflation: number
 }
 
 export function emptyDraft(): LifeDraft {
-  return { funeralCost: '', siblingCount: '1', members: [], debts: [], assets: [] }
+  return {
+    funeralCost: '',
+    siblingCount: '1',
+    inflationRate: '0',
+    childUntil: String(CHILD_UNTIL),
+    parentUntil: String(PARENT_UNTIL),
+    reserveAmount: '',
+    spouseAge: '',
+    spouseMonthly: '',
+    spouseUntil: '',
+    members: [],
+    debts: [],
+    assets: [],
+  }
 }
 
 export function draftFromPlan(plan: LifePlanInput): LifeDraft {
   return {
     funeralCost: plan.funeralCost ? String(plan.funeralCost) : '',
     siblingCount: String(plan.siblingCount),
+    inflationRate: String(plan.inflationRate || 0),
+    childUntil: String(plan.childUntil || CHILD_UNTIL),
+    parentUntil: String(plan.parentUntil || PARENT_UNTIL),
+    reserveAmount: plan.reserveAmount ? String(plan.reserveAmount) : '',
+    spouseAge: plan.spouse ? String(plan.spouse.age) : '',
+    spouseMonthly: plan.spouse ? String(plan.spouse.monthlyCost) : '',
+    spouseUntil: plan.spouse ? String(plan.spouse.untilAge) : '',
     members: plan.members.map((member) => ({
       id: member.id,
       role: member.role,
@@ -97,23 +141,41 @@ export function draftFromPlan(plan: LifePlanInput): LifeDraft {
   }
 }
 
-export function supportYears(role: LifeRole, age: number) {
-  const until = role === 'child' ? CHILD_UNTIL : PARENT_UNTIL
+export function supportYears(role: LifeRole, age: number, until?: number) {
+  return yearsUntil(age, until ?? (role === 'child' ? CHILD_UNTIL : PARENT_UNTIL))
+}
+
+export function yearsUntil(age: number, until: number) {
   return Math.max(0, until - age)
 }
 
 export function calculateLifeNeed(plan: LifePlanInput, policies: Policy[]): LifeNeedResult {
   const share = plan.siblingCount >= 1 ? plan.siblingCount : 1
-  const lines = plan.members.map((member) => memberLine(member, share))
+  const rate = plan.inflationRate > 0 ? plan.inflationRate : 0
+  const childUntil = plan.childUntil > 0 ? plan.childUntil : CHILD_UNTIL
+  const parentUntil = plan.parentUntil > 0 ? plan.parentUntil : PARENT_UNTIL
+  const lines = [
+    ...plan.members.map((member) => memberLine(member, share, rate, member.role === 'child' ? childUntil : parentUntil)),
+    ...(plan.spouse ? [spouseLine(plan.spouse, rate)] : []),
+  ]
+  const flatLines = [
+    ...plan.members.map((member) => memberLine(member, share, 0, member.role === 'child' ? childUntil : parentUntil)),
+    ...(plan.spouse ? [spouseLine(plan.spouse, 0)] : []),
+  ]
   const childTotal = roundMoney(sum(lines.filter((line) => line.role === 'child').map((line) => line.amount)))
   const parentTotal = roundMoney(sum(lines.filter((line) => line.role === 'parent').map((line) => line.amount)))
-  const familyTotal = roundMoney(childTotal + parentTotal)
+  const spouseTotal = roundMoney(sum(lines.filter((line) => line.role === 'spouse').map((line) => line.amount)))
+  const familyTotal = roundMoney(childTotal + parentTotal + spouseTotal)
+  const familyWithoutInflation = roundMoney(sum(flatLines.map((line) => line.amount)))
   const debtTotal = roundMoney(sum(plan.debts.map((item) => item.amount)))
   const funeralCost = roundMoney(Math.max(0, plan.funeralCost))
   const grossNeed = roundMoney(familyTotal + debtTotal + funeralCost)
   const assetTotal = roundMoney(sum(plan.assets.map((item) => item.amount)))
+  const reserveAmount = roundMoney(Math.max(0, plan.reserveAmount))
+  const deductibleAssets = roundMoney(Math.max(0, assetTotal - reserveAmount))
   const life = existingLife(policies)
-  const gap = roundMoney(grossNeed - assetTotal - life.hkd)
+  const gap = roundMoney(grossNeed - deductibleAssets - life.hkd)
+  const gapWithoutInflation = roundMoney(familyWithoutInflation + debtTotal + funeralCost - deductibleAssets - life.hkd)
   return {
     lines,
     childTotal,
@@ -123,10 +185,16 @@ export function calculateLifeNeed(plan: LifePlanInput, policies: Policy[]): Life
     funeralCost,
     grossNeed,
     assetTotal,
+    reserveAmount,
+    deductibleAssets,
+    spouseTotal,
     lifeHkd: life.hkd,
     lifeCount: life.count,
     foreignLife: life.foreign,
     gap,
+    inflationRate: rate,
+    familyWithoutInflation,
+    gapWithoutInflation,
   }
 }
 
@@ -135,6 +203,16 @@ export function validateDraft(draft: LifeDraft): { plan: LifePlanInput } | { err
   if (siblingCount == null || siblingCount < 1 || siblingCount > 20) return { error: '兄弟姊妹人數請填 1 至 20，並連同客人自己。' }
   const funeral = parseMoney(draft.funeralCost)
   if (funeral === 'invalid') return { error: '身後費用請填 0 或正數。' }
+  const inflationRate = parseRate(draft.inflationRate)
+  if (inflationRate === 'invalid') return { error: '通脹請填 0 至 20，最多兩位小數。' }
+  const childUntil = parseBound(draft.childUntil, 22, 1, 40)
+  if (childUntil === 'invalid') return { error: '子女照顧至幾歲請填 1 至 40。' }
+  const parentUntil = parseBound(draft.parentUntil, 88, 50, 120)
+  if (parentUntil === 'invalid') return { error: '父母照顧至幾歲請填 50 至 120。' }
+  const reserve = parseMoney(draft.reserveAmount)
+  if (reserve === 'invalid') return { error: '保留應急資金請填 0 或正數。' }
+  const spouse = readSpouse(draft)
+  if ('error' in spouse) return spouse
   const members: LifeMember[] = []
   for (const member of draft.members) {
     if (blankMember(member)) continue
@@ -148,15 +226,38 @@ export function validateDraft(draft: LifeDraft): { plan: LifePlanInput } | { err
   if ('error' in debts) return debts
   const assets = readItems(draft.assets, '資金')
   if ('error' in assets) return assets
-  return { plan: { funeralCost: funeral ?? 0, siblingCount, members, debts, assets } }
+  return {
+    plan: {
+      funeralCost: funeral ?? 0,
+      siblingCount,
+      inflationRate: inflationRate ?? 0,
+      childUntil,
+      parentUntil,
+      reserveAmount: reserve ?? 0,
+      spouse: spouse.spouse,
+      members,
+      debts,
+      assets,
+    },
+  }
 }
 
 export function previewDraft(draft: LifeDraft): LifePlanInput {
   const sibling = parseInteger(draft.siblingCount)
   const funeral = parseMoney(draft.funeralCost)
+  const inflationRate = parseRate(draft.inflationRate, true)
+  const childUntil = parseBound(draft.childUntil, 22, 1, 40)
+  const parentUntil = parseBound(draft.parentUntil, 88, 50, 120)
+  const reserve = parseMoney(draft.reserveAmount)
+  const spouse = readSpouse(draft)
   return {
     funeralCost: funeral == null || funeral === 'invalid' ? 0 : funeral,
     siblingCount: sibling != null && sibling >= 1 && sibling <= 20 ? sibling : 1,
+    inflationRate: inflationRate === 'invalid' || inflationRate == null ? 0 : inflationRate,
+    childUntil: childUntil === 'invalid' ? 22 : childUntil,
+    parentUntil: parentUntil === 'invalid' ? 88 : parentUntil,
+    reserveAmount: reserve == null || reserve === 'invalid' ? 0 : reserve,
+    spouse: 'error' in spouse ? null : spouse.spouse,
     members: draft.members.flatMap((member) => {
       const age = parseInteger(member.age)
       const monthlyCost = parseMoney(member.monthlyCost)
@@ -177,12 +278,13 @@ export function previewDraft(draft: LifeDraft): LifePlanInput {
 }
 
 export function planHasInputs(plan: LifePlanInput) {
-  return plan.members.length > 0 || plan.debts.length > 0 || plan.assets.length > 0 || plan.funeralCost > 0
+  return plan.members.length > 0 || plan.spouse != null || plan.debts.length > 0 || plan.assets.length > 0 || plan.funeralCost > 0 || plan.reserveAmount > 0
 }
 
-function memberLine(member: LifeMember, siblingCount: number): LifeSupportLine {
-  const years = supportYears(member.role, member.age)
+function memberLine(member: LifeMember, siblingCount: number, inflationRate: number, untilAge: number): LifeSupportLine {
+  const years = yearsUntil(member.age, untilAge)
   const share = member.role === 'parent' ? siblingCount : 1
+  const annual = (member.monthlyCost / share) * 12
   return {
     id: member.id,
     role: member.role,
@@ -191,8 +293,29 @@ function memberLine(member: LifeMember, siblingCount: number): LifeSupportLine {
     years,
     monthlyCost: member.monthlyCost,
     share,
-    amount: roundMoney((member.monthlyCost / share) * 12 * years),
+    amount: inflatedTotal(annual, years, inflationRate),
   }
+}
+
+function spouseLine(spouse: LifeSpouse, inflationRate: number): LifeSupportLine {
+  const years = yearsUntil(spouse.age, spouse.untilAge)
+  return {
+    id: 'spouse',
+    role: 'spouse',
+    name: '配偶',
+    age: spouse.age,
+    years,
+    monthlyCost: spouse.monthlyCost,
+    share: 1,
+    amount: inflatedTotal(spouse.monthlyCost * 12, years, inflationRate),
+  }
+}
+
+function inflatedTotal(annual: number, years: number, rate: number) {
+  if (years <= 0 || annual <= 0) return 0
+  if (rate <= 0) return roundMoney(annual * years)
+  const growth = rate / 100
+  return roundMoney((annual * (Math.pow(1 + growth, years) - 1)) / growth)
 }
 
 function existingLife(policies: Policy[]) {
@@ -226,6 +349,38 @@ function readItems(items: LifeDraftItem[], label: string): LifeMoneyItem[] | { e
     next.push({ id: item.id, name: item.name.trim().slice(0, 40), amount })
   }
   return next
+}
+
+function readSpouse(draft: LifeDraft): { spouse: LifeSpouse | null } | { error: string } {
+  const blank = !draft.spouseAge.trim() && !draft.spouseMonthly.trim() && !draft.spouseUntil.trim()
+  if (blank) return { spouse: null }
+  const age = parseInteger(draft.spouseAge)
+  const monthlyCost = parseMoney(draft.spouseMonthly)
+  const untilAge = parseInteger(draft.spouseUntil)
+  if (age == null || age > 120) return { error: '請填配偶歲數，0 至 120。' }
+  if (monthlyCost === 'invalid' || monthlyCost == null) return { error: '請填配偶每月仍短缺的生活費。' }
+  if (untilAge == null || untilAge < 1 || untilAge > 120) return { error: '配偶照顧至幾歲請填 1 至 120。' }
+  return { spouse: { age, monthlyCost, untilAge } }
+}
+
+function parseBound(raw: string, fallback: number, min: number, max: number): number | 'invalid' {
+  const text = raw.trim()
+  if (!text) return fallback
+  if (!/^\d+$/.test(text)) return 'invalid'
+  const value = Number(text)
+  if (value < min || value > max) return 'invalid'
+  return value
+}
+
+function parseRate(raw: string, loose = false): number | null | 'invalid' {
+  let text = raw.trim()
+  if (!text) return 0
+  if (loose && text.endsWith('.')) text = text.slice(0, -1)
+  if (!text) return 0
+  if (!/^\d+(\.\d{1,2})?$/.test(text)) return 'invalid'
+  const value = Number(text)
+  if (!Number.isFinite(value) || value < 0 || value > 20) return 'invalid'
+  return roundMoney(value)
 }
 
 function parseInteger(raw: string) {

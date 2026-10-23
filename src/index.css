@@ -1390,6 +1390,37 @@ input[type='number'] {
   line-height: 1.1;
 }
 
+.life-rates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin-top: 0.85rem;
+}
+
+.life-rates button,
+.life-rates input {
+  min-height: 2rem;
+  border: 1px solid rgba(247, 244, 238, 0.35);
+  border-radius: 999px;
+  background: transparent;
+  color: #f7f4ee;
+  padding: 0 0.75rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.life-rates input {
+  width: 4.5rem;
+  cursor: text;
+}
+
+.life-rates button.is-on {
+  border-color: #d7b07a;
+  background: #d7b07a;
+  color: #14302c;
+}
+
 .life-meter {
   height: 0.35rem;
   margin-top: 0.85rem;
@@ -1412,7 +1443,8 @@ input[type='number'] {
 
 .life-report-conclusion p,
 .life-report-conclusion span {
-  margin: 0;
+  display: block;
+  margin: 0.15rem 0 0;
   color: #5e574e;
   font-size: 0.78rem;
 }

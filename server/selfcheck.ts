@@ -162,6 +162,11 @@ const lifeNeed = calculateLifeNeed(
   {
     funeralCost: 80000,
     siblingCount: 3,
+    inflationRate: 0,
+    childUntil: 22,
+    parentUntil: 88,
+    reserveAmount: 0,
+    spouse: null,
     members: [
       { id: 'child', role: 'child', name: '兒子', age: 0, monthlyCost: 10000 },
       { id: 'parent', role: 'parent', name: '媽媽', age: 65, monthlyCost: 9000 },
@@ -187,11 +192,63 @@ assert.equal(lifeNeed.familyTotal, 3468000)
 assert.equal(lifeNeed.grossNeed, 5648000)
 assert.equal(lifeNeed.lifeHkd, 1000000)
 assert.equal(lifeNeed.gap, 3948000)
+assert.equal(lifeNeed.gapWithoutInflation, 3948000)
 assert.match(lifeNeed.foreignLife, /US\$50,000|USD/)
+
+const inflated = calculateLifeNeed(
+  {
+    funeralCost: 0,
+    siblingCount: 1,
+    inflationRate: 3,
+    childUntil: 22,
+    parentUntil: 88,
+    reserveAmount: 0,
+    spouse: null,
+    members: [{ id: 'child', role: 'child', name: '兒子', age: 0, monthlyCost: 10000 }],
+    debts: [],
+    assets: [],
+  },
+  [],
+)
+const inflatedFactor = (Math.pow(1.03, 22) - 1) / 0.03
+assert.equal(inflated.childTotal, Math.round(120000 * inflatedFactor * 100) / 100)
+assert.ok(inflated.gap > inflated.gapWithoutInflation)
+assert.equal(inflated.gapWithoutInflation, 2640000)
+
+const adjusted = calculateLifeNeed(
+  {
+    funeralCost: 0,
+    siblingCount: 1,
+    inflationRate: 0,
+    childUntil: 18,
+    parentUntil: 90,
+    reserveAmount: 200000,
+    spouse: { age: 40, monthlyCost: 20000, untilAge: 65 },
+    members: [
+      { id: 'child', role: 'child', name: '女兒', age: 10, monthlyCost: 5000 },
+      { id: 'parent', role: 'parent', name: '父親', age: 65, monthlyCost: 3000 },
+    ],
+    debts: [],
+    assets: [{ id: 'cash', name: '現金', amount: 500000 }],
+  },
+  [],
+)
+assert.equal(adjusted.lines.find((line) => line.role === 'child')?.years, 8)
+assert.equal(adjusted.lines.find((line) => line.role === 'parent')?.years, 25)
+assert.equal(adjusted.spouseTotal, 6000000)
+assert.equal(adjusted.deductibleAssets, 300000)
+assert.equal(adjusted.gap, adjusted.grossNeed - 300000)
 
 const invalidPlan = validateDraft({
   funeralCost: '',
   siblingCount: '0',
+  inflationRate: '0',
+  childUntil: '22',
+  parentUntil: '88',
+  reserveAmount: '',
+  spouseAge: '',
+  spouseMonthly: '',
+  spouseUntil: '',
   members: [],
   debts: [],
   assets: [],
