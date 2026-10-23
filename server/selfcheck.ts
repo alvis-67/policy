@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { analyzeClient } from '../src/lib/analysis'
 import { calculateLifeNeed, supportYears, validateDraft } from '../src/lib/lifeNeed'
+import { calculateRetirement, retirementError, type RetirementInput } from '../src/lib/retirement'
 import { toAnnualPremium, toMonthlyPremium } from '../src/lib/format'
 import { formatAmountInput } from '../src/lib/parse'
 import { summarizePolicies } from './stats'
@@ -259,6 +260,21 @@ const invalidPlan = validateDraft({
 })
 assert.ok('error' in invalidPlan)
 
+const quiet = retirementCase({ inflationRate: 0, returnBefore: 0, returnAfter: 0, mpfBalance: 100000, mpfMonthly: 1000, otherAssets: 0, monthlyExpense: 10000, currentAge: 60, retireAge: 65, untilAge: 70 })
+assert.equal(quiet.capitalNeeded, 600000)
+assert.equal(quiet.mpfFuture, 160000)
+assert.equal(quiet.gap, 440000)
+assert.equal(quiet.monthlyTopUp, 7333)
+
+const invested = retirementCase({ currentAge: 64, retireAge: 65, untilAge: 67, monthlyExpense: 1000, inflationRate: 0, returnBefore: 0, returnAfter: 10, mpfBalance: 0, mpfMonthly: 0, otherAssets: 0 })
+assert.equal(invested.capitalNeeded, 22909)
+assert.equal(invested.gap, 22909)
+
+const surplus = retirementCase({ otherAssets: 20000000, mpfBalance: 0, mpfMonthly: 0, inflationRate: 0, returnBefore: 0, returnAfter: 0 })
+assert.equal(surplus.gap, 0)
+assert.ok(surplus.surplus > 0)
+assert.equal(retirementError(retirementCaseInput({ retireAge: 50, currentAge: 60 })), '目標退休年齡須為 50 至 75 歲，而且不可小於現時年齡。')
+
 console.log('selfcheck ok')
 
 function sampleClient(patch: Partial<Client>): Client {
@@ -279,6 +295,27 @@ function sampleClient(patch: Partial<Client>): Client {
     notes: '',
     createdAt: '',
     updatedAt: '',
+    ...patch,
+  }
+}
+
+function retirementCase(patch: Partial<RetirementInput>) {
+  return calculateRetirement(retirementCaseInput(patch))
+}
+
+function retirementCaseInput(patch: Partial<RetirementInput>): RetirementInput {
+  return {
+    currentAge: 35,
+    retireAge: 65,
+    monthlyExpense: 20000,
+    mpfBalance: 300000,
+    mpfMonthly: 3000,
+    otherAssets: 500000,
+    untilAge: 90,
+    inflationRate: 3,
+    returnBefore: 5,
+    returnAfter: 3,
+    expenseRatio: 100,
     ...patch,
   }
 }

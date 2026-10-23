@@ -8,6 +8,7 @@ import { Clients } from './pages/Clients'
 import { Dashboard } from './pages/Dashboard'
 import { LifePlanDetail, LifePlans } from './pages/LifePlan'
 import { LifeReport } from './pages/LifeReport'
+import { Retirement } from './pages/Retirement'
 import { Report } from './pages/Report'
 
 export function App() {
@@ -26,6 +27,7 @@ export function App() {
           <Route path="analysis/:id" element={<AnalysisDetail />} />
           <Route path="finance" element={<LifePlans />} />
           <Route path="finance/:id" element={<LifePlanDetail />} />
+          <Route path="retirement" element={<Retirement />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

@@ -41,6 +41,10 @@ export function Layout() {
             <PlanIcon />
             專業理財分析
           </NavLink>
+          <NavLink to="/retirement" className={navClass}>
+            <RetireIcon />
+            退休計算器
+          </NavLink>
         </nav>
         <div className="sidebar-note">
           <p>只有已登入的帳號可以查看資料，資料存放在 Supabase。</p>
@@ -113,6 +117,15 @@ function ScaleIcon() {
       <path d="M8 2.2v11.2M3.2 13.4h9.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       <path d="M8 3.6 3.4 6.2M8 3.6l4.6 2.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       <path d="M2.2 6.2h2.4l-1.2 2.6-1.2-2.6ZM11.4 6.2h2.4L12.6 8.8l-1.2-2.6Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function RetireIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="5.2" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M8 4.8V8l2.1 1.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
