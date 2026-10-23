@@ -37,6 +37,10 @@ export function Layout() {
             <ScaleIcon />
             保障分析
           </NavLink>
+          <NavLink to="/finance" className={navClass}>
+            <PlanIcon />
+            專業理財分析
+          </NavLink>
         </nav>
         <div className="sidebar-note">
           <p>只有已登入的帳號可以查看資料，資料存放在 Supabase。</p>
@@ -90,6 +94,15 @@ function ListIcon() {
       <circle cx="2.4" cy="3.5" r="0.8" fill="currentColor" />
       <circle cx="2.4" cy="8" r="0.8" fill="currentColor" />
       <circle cx="2.4" cy="12.5" r="0.8" fill="currentColor" />
+    </svg>
+  )
+}
+
+function PlanIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="2.2" y="1.6" width="11.6" height="12.8" rx="1.4" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M4.6 5h6.8M4.6 8h6.8M4.6 11h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   )
 }

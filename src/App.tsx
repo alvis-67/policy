@@ -6,6 +6,7 @@ import { Catalog } from './pages/Catalog'
 import { ClientDetail } from './pages/ClientDetail'
 import { Clients } from './pages/Clients'
 import { Dashboard } from './pages/Dashboard'
+import { LifePlanDetail, LifePlans } from './pages/LifePlan'
 import { Report } from './pages/Report'
 
 export function App() {
@@ -21,6 +22,8 @@ export function App() {
           <Route path="catalog" element={<Catalog />} />
           <Route path="analysis" element={<Analysis />} />
           <Route path="analysis/:id" element={<AnalysisDetail />} />
+          <Route path="finance" element={<LifePlans />} />
+          <Route path="finance/:id" element={<LifePlanDetail />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

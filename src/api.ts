@@ -1,4 +1,5 @@
 import { validateClient, validatePolicy } from '../server/validate'
+import type { LifeMember, LifeMoneyItem, LifePlanInput } from './lib/lifeNeed'
 import { summarizePolicies } from './lib/stats'
 import { supabase } from './lib/supabase'
 import {
@@ -11,6 +12,11 @@ import {
   ROOM_LEVELS,
 } from './lib/labels'
 import type { Client, ClientDetailResponse, ClientListItem, ClientWrite, Policy, PolicyWrite, Summary } from './types'
+
+export interface SavedLifePlan extends LifePlanInput {
+  clientId: string
+  updatedAt: string
+}
 
 interface ClientRow {
   id: string
@@ -124,8 +130,12 @@ function mapPolicy(row: PolicyRow): Policy {
 function fail(error: { message: string; code?: string } | null, fallback = '系統暫時無法處理，請再試一次。'): never {
   if (error?.code === 'PGRST116') throw new Error('找不到這項紀錄')
   if (error?.message.toLowerCase().includes('jwt')) throw new Error('請重新登入')
-  if (/room_level|deductible|full_cover|sum_assured/.test(error?.message.toLowerCase() ?? '')) {
+  const message = (error?.message ?? '').toLowerCase()
+  if (/room_level|deductible|full_cover|sum_assured/.test(message)) {
     throw new Error('醫療欄位尚未建立。請到 Supabase SQL Editor 執行 supabase/medical.sql，然後再儲存。')
+  }
+  if (message.includes('life_plans')) {
+    throw new Error('理財分析尚未建立。請到 Supabase SQL Editor 執行 supabase/life.sql，然後再儲存。')
   }
   throw new Error(fallback)
 }
@@ -298,6 +308,44 @@ export const api = {
     return loadBook()
   },
 
+  async lifePlans(): Promise<{ ready: boolean; plans: SavedLifePlan[] }> {
+    const result = await supabase.from('life_plans').select('*')
+    if (result.error) {
+      if (missingLifeTable(result.error)) return { ready: false, plans: [] }
+      fail(result.error, '讀取理財分析失敗，請再試一次。')
+    }
+    return { ready: true, plans: ((result.data ?? []) as LifePlanRow[]).map(mapLifePlan) }
+  },
+
+  async lifePlan(clientId: string): Promise<{ ready: boolean; plan: SavedLifePlan | null }> {
+    const result = await supabase.from('life_plans').select('*').eq('client_id', clientId).maybeSingle()
+    if (result.error) {
+      if (missingLifeTable(result.error)) return { ready: false, plan: null }
+      fail(result.error, '讀取理財分析失敗，請再試一次。')
+    }
+    return { ready: true, plan: result.data ? mapLifePlan(result.data as LifePlanRow) : null }
+  },
+
+  async saveLifePlan(clientId: string, plan: LifePlanInput): Promise<SavedLifePlan> {
+    const result = await supabase
+      .from('life_plans')
+      .upsert(
+        {
+          client_id: clientId,
+          funeral_cost: plan.funeralCost,
+          sibling_count: plan.siblingCount,
+          members: plan.members,
+          debts: plan.debts,
+          assets: plan.assets,
+        },
+        { onConflict: 'client_id' },
+      )
+      .select('*')
+      .single()
+    if (result.error || !result.data) fail(result.error, '儲存理財分析失敗，請再試一次。')
+    return mapLifePlan(result.data as LifePlanRow)
+  },
+
   async policyChoices(): Promise<Array<{ insurer: string; policyType: Policy['policyType']; policyName: string }>> {
     const { policies } = await loadBook()
     const seen = new Set<string>()
@@ -311,4 +359,74 @@ export const api = {
     }
     return choices
   },
+}
+
+interface LifePlanRow {
+  client_id: string
+  funeral_cost: number | string | null
+  sibling_count: number | string | null
+  members: unknown
+  debts: unknown
+  assets: unknown
+  updated_at: string
+}
+
+function missingLifeTable(error: { message?: string; code?: string }) {
+  const message = (error.message ?? '').toLowerCase()
+  return error.code === 'PGRST205' || error.code === '42P01' || message.includes('life_plans')
+}
+
+function mapLifePlan(row: LifePlanRow): SavedLifePlan {
+  const siblingCount = optionalNumber(row.sibling_count) ?? 1
+  return {
+    clientId: row.client_id,
+    funeralCost: Math.max(0, optionalNumber(row.funeral_cost) ?? 0),
+    siblingCount: Math.min(20, Math.max(1, Math.round(siblingCount))),
+    members: readMembers(row.members),
+    debts: readMoneyItems(row.debts, '債務'),
+    assets: readMoneyItems(row.assets, '資金'),
+    updatedAt: row.updated_at,
+  }
+}
+
+function readMembers(value: unknown): LifeMember[] {
+  if (!Array.isArray(value)) return []
+  const members: LifeMember[] = []
+  value.forEach((item, index) => {
+    if (!item || typeof item !== 'object') return
+    const row = item as Record<string, unknown>
+    const role = row.role === 'parent' ? 'parent' : row.role === 'child' ? 'child' : null
+    const age = optionalNumber(asNumber(row.age))
+    const monthlyCost = optionalNumber(asNumber(row.monthlyCost))
+    if (!role || age == null || monthlyCost == null || age < 0 || age > 120 || monthlyCost < 0) return
+    members.push({
+      id: typeof row.id === 'string' && row.id ? row.id : `member-${index}`,
+      role,
+      name: typeof row.name === 'string' ? row.name.slice(0, 40) : '',
+      age: Math.round(age),
+      monthlyCost,
+    })
+  })
+  return members
+}
+
+function readMoneyItems(value: unknown, fallback: string): LifeMoneyItem[] {
+  if (!Array.isArray(value)) return []
+  const items: LifeMoneyItem[] = []
+  value.forEach((item, index) => {
+    if (!item || typeof item !== 'object') return
+    const row = item as Record<string, unknown>
+    const amount = optionalNumber(asNumber(row.amount))
+    if (amount == null || amount < 0) return
+    items.push({
+      id: typeof row.id === 'string' && row.id ? row.id : `item-${index}`,
+      name: typeof row.name === 'string' && row.name.trim() ? row.name.trim().slice(0, 40) : fallback,
+      amount,
+    })
+  })
+  return items
+}
+
+function asNumber(value: unknown): number | string | null {
+  return typeof value === 'number' || typeof value === 'string' ? value : null
 }

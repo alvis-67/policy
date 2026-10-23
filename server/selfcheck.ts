@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { analyzeClient } from '../src/lib/analysis'
+import { calculateLifeNeed, supportYears, validateDraft } from '../src/lib/lifeNeed'
 import { toAnnualPremium, toMonthlyPremium } from '../src/lib/format'
 import { summarizePolicies } from './stats'
 import { validateClient, validatePolicy } from './validate'
@@ -150,6 +151,52 @@ assert.equal(partial.findings.find((item) => item.type === 'medical')?.verdict, 
 const noIncome = analyzeClient(sampleClient({ monthlyIncome: null }), [policy('life2', life)])
 assert.equal(noIncome.findings.find((item) => item.type === 'life')?.verdict, 'unknown')
 assert.equal(noIncome.annualIncome, null)
+
+assert.equal(supportYears('child', 0), 22)
+assert.equal(supportYears('child', 10), 12)
+assert.equal(supportYears('child', 22), 0)
+assert.equal(supportYears('parent', 65), 23)
+assert.equal(supportYears('parent', 88), 0)
+
+const lifeNeed = calculateLifeNeed(
+  {
+    funeralCost: 80000,
+    siblingCount: 3,
+    members: [
+      { id: 'child', role: 'child', name: '兒子', age: 0, monthlyCost: 10000 },
+      { id: 'parent', role: 'parent', name: '媽媽', age: 65, monthlyCost: 9000 },
+    ],
+    debts: [
+      { id: 'mortgage', name: '房貸', amount: 2000000 },
+      { id: 'loan', name: '私人貸款', amount: 100000 },
+    ],
+    assets: [
+      { id: 'cash', name: '現金', amount: 500000 },
+      { id: 'mpf', name: '強積金', amount: 200000 },
+    ],
+  },
+  [
+    policy('need-life', { ...life, sumAssured: 1000000, policyNumber: 'NEED' }),
+    policy('need-usd', { ...life, currency: 'USD', sumAssured: 50000, policyNumber: 'NEED-USD' }),
+    policy('need-old', { ...life, status: 'lapsed', sumAssured: 9000000, policyNumber: 'NEED-OLD' }),
+  ],
+)
+assert.equal(lifeNeed.childTotal, 2640000)
+assert.equal(lifeNeed.parentTotal, 828000)
+assert.equal(lifeNeed.familyTotal, 3468000)
+assert.equal(lifeNeed.grossNeed, 5648000)
+assert.equal(lifeNeed.lifeHkd, 1000000)
+assert.equal(lifeNeed.gap, 3948000)
+assert.match(lifeNeed.foreignLife, /US\$50,000|USD/)
+
+const invalidPlan = validateDraft({
+  funeralCost: '',
+  siblingCount: '0',
+  members: [],
+  debts: [],
+  assets: [],
+})
+assert.ok('error' in invalidPlan)
 
 console.log('selfcheck ok')
 

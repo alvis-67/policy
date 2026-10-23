@@ -152,6 +152,9 @@ export function ClientDetail() {
           <Link className="btn btn-ghost" to={`/analysis/${client.id}`}>
             保障分析
           </Link>
+          <Link className="btn btn-ghost" to={`/finance/${client.id}`}>
+            理財分析
+          </Link>
           <button type="button" className="btn btn-ghost" onClick={() => setEditing(true)}>
             編輯資料
           </button>
