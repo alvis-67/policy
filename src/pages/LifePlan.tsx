@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, errorMessage, type SavedLifePlan } from '../api'
 import { EmptyState } from '../components/EmptyState'
 import { Field } from '../components/Field'
 import { PageHeader } from '../components/PageHeader'
 import { calcAge, displayName, formatMoney, formatPhone, nameInitial } from '../lib/format'
+import { amountCaret, formatAmountInput } from '../lib/parse'
 import { GENDER_OPTIONS, labelOf, MARITAL_OPTIONS } from '../lib/labels'
 import {
   calculateLifeNeed,
@@ -320,8 +321,8 @@ export function LifePlanDetail() {
                   id="spouseMonthly"
                   inputMode="decimal"
                   value={draft.spouseMonthly}
-                  placeholder="15000"
-                  onChange={(event) => update({ ...draft, spouseMonthly: event.target.value })}
+                  placeholder="15,000"
+                  onChange={(event) => onAmount(event, (spouseMonthly) => update({ ...draft, spouseMonthly }))}
                 />
               </Field>
               <Field label="照顧至幾歲" htmlFor="spouseUntil">
@@ -348,7 +349,7 @@ export function LifePlanDetail() {
                 inputMode="decimal"
                 value={draft.funeralCost}
                 placeholder="0"
-                onChange={(event) => update({ ...draft, funeralCost: event.target.value })}
+                onChange={(event) => onAmount(event, (funeralCost) => update({ ...draft, funeralCost }))}
               />
             </Field>
           </section>
@@ -366,7 +367,7 @@ export function LifePlanDetail() {
                   inputMode="decimal"
                   value={draft.reserveAmount}
                   placeholder="0"
-                  onChange={(event) => update({ ...draft, reserveAmount: event.target.value })}
+                  onChange={(event) => onAmount(event, (reserveAmount) => update({ ...draft, reserveAmount }))}
                 />
               </Field>
             }
@@ -424,8 +425,8 @@ function MemberRow({
           id={`cost-${member.id}`}
           inputMode="decimal"
           value={member.monthlyCost}
-          placeholder="10000"
-          onChange={(event) => onChange({ ...member, monthlyCost: event.target.value })}
+          placeholder="10,000"
+          onChange={(event) => onAmount(event, (monthlyCost) => onChange({ ...member, monthlyCost }))}
         />
       </Field>
       <div className="life-row-side">
@@ -487,7 +488,7 @@ function MoneySection({
               inputMode="decimal"
               value={row.amount}
               placeholder="0"
-              onChange={(event) => onChange(rows.map((item) => (item.id === row.id ? { ...item, amount: event.target.value } : item)))}
+              onChange={(event) => onAmount(event, (amount) => onChange(rows.map((item) => (item.id === row.id ? { ...item, amount } : item))))}
             />
           </Field>
           <button type="button" className="linkish danger" onClick={() => onChange(rows.filter((item) => item.id !== row.id))}>
@@ -591,6 +592,14 @@ function Fact({ label, value }: { label: string; value: string }) {
       <dd>{value}</dd>
     </div>
   )
+}
+
+function onAmount(event: ChangeEvent<HTMLInputElement>, apply: (value: string) => void) {
+  const formatted = formatAmountInput(event.target.value)
+  const caret = amountCaret(event.target.value, formatted, event.target.selectionStart ?? formatted.length)
+  const input = event.target
+  apply(formatted)
+  requestAnimationFrame(() => input.setSelectionRange(caret, caret))
 }
 
 function shownUntil(raw: string, fallback: number, min: number, max: number) {

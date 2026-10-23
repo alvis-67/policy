@@ -1,4 +1,5 @@
 import { addMoney, formatMoney, moneyParts, roundMoney, type MoneyBag } from './format'
+import { formatAmountInput } from './parse'
 import { countsAsCover, type Currency } from './labels'
 import type { Policy } from '../types'
 
@@ -120,21 +121,21 @@ export function emptyDraft(): LifeDraft {
 
 export function draftFromPlan(plan: LifePlanInput): LifeDraft {
   return {
-    funeralCost: plan.funeralCost ? String(plan.funeralCost) : '',
+    funeralCost: plan.funeralCost ? formatAmountInput(String(plan.funeralCost)) : '',
     siblingCount: String(plan.siblingCount),
     inflationRate: String(plan.inflationRate || 0),
     childUntil: String(plan.childUntil || CHILD_UNTIL),
     parentUntil: String(plan.parentUntil || PARENT_UNTIL),
-    reserveAmount: plan.reserveAmount ? String(plan.reserveAmount) : '',
+    reserveAmount: plan.reserveAmount ? formatAmountInput(String(plan.reserveAmount)) : '',
     spouseAge: plan.spouse ? String(plan.spouse.age) : '',
-    spouseMonthly: plan.spouse ? String(plan.spouse.monthlyCost) : '',
+    spouseMonthly: plan.spouse ? formatAmountInput(String(plan.spouse.monthlyCost)) : '',
     spouseUntil: plan.spouse ? String(plan.spouse.untilAge) : '',
     members: plan.members.map((member) => ({
       id: member.id,
       role: member.role,
       name: member.name,
       age: String(member.age),
-      monthlyCost: String(member.monthlyCost),
+      monthlyCost: formatAmountInput(String(member.monthlyCost)),
     })),
     debts: plan.debts.map(itemToDraft),
     assets: plan.assets.map(itemToDraft),
@@ -332,7 +333,7 @@ function existingLife(policies: Policy[]) {
 }
 
 function itemToDraft(item: LifeMoneyItem): LifeDraftItem {
-  return { id: item.id, name: item.name, amount: String(item.amount) }
+  return { id: item.id, name: item.name, amount: formatAmountInput(String(item.amount)) }
 }
 
 function blankMember(member: LifeDraftMember) {

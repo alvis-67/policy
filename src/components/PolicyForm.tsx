@@ -10,7 +10,7 @@ import {
   PREMIUM_FREQUENCIES,
   ROOM_LEVELS,
 } from '../lib/labels'
-import { parseOptionalNumber, parseRequiredNumber } from '../lib/parse'
+import { amountCaret, formatAmountInput, parseOptionalNumber, parseRequiredNumber } from '../lib/parse'
 import { catalogProducts } from '../lib/products'
 import type { Policy, PolicyWrite } from '../types'
 import { Field } from './Field'
@@ -81,12 +81,12 @@ function fromPolicy(policy: Policy): PolicyFormState {
     policyNumber: policy.policyNumber,
     policyType: policy.policyType,
     currency: policy.currency,
-    sumAssured: policy.sumAssured == null ? '' : String(policy.sumAssured),
+    sumAssured: policy.sumAssured == null ? '' : formatAmountInput(String(policy.sumAssured)),
     roomLevel: policy.roomLevel,
-    deductible: policy.deductible == null ? '' : String(policy.deductible),
+    deductible: policy.deductible == null ? '' : formatAmountInput(String(policy.deductible)),
     fullCover: policy.fullCover == null ? '' : policy.fullCover ? 'yes' : 'no',
     issueDate: policy.issueDate,
-    premiumAmount: String(policy.premiumAmount),
+    premiumAmount: formatAmountInput(String(policy.premiumAmount)),
     premiumFrequency: policy.premiumFrequency,
     premiumTerm: policy.premiumTerm,
     status: policy.status,
@@ -144,6 +144,15 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
 
   function onChange(event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     const { name, value } = event.target
+    const amountField = name === 'sumAssured' || name === 'deductible' || name === 'premiumAmount'
+    if (amountField && event.target instanceof HTMLInputElement) {
+      const formatted = formatAmountInput(value)
+      const caret = amountCaret(value, formatted, event.target.selectionStart ?? formatted.length)
+      const input = event.target
+      setForm((current) => ({ ...current, [name]: formatted }))
+      requestAnimationFrame(() => input.setSelectionRange(caret, caret))
+      return
+    }
     setForm((current) => ({ ...current, [name]: value }))
   }
 
@@ -425,7 +434,7 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
           </>
         ) : (
           <Field label="保障額" htmlFor="sumAssured" required hint="人壽、危疾、意外填保額">
-            <input id="sumAssured" name="sumAssured" inputMode="decimal" value={form.sumAssured} onChange={onChange} placeholder="1000000" />
+            <input id="sumAssured" name="sumAssured" inputMode="decimal" value={form.sumAssured} onChange={onChange} placeholder="1,000,000" />
           </Field>
         )}
         <Field label="供款年期" htmlFor="premiumTerm" hint="選填，例如 20年 或 至65歲">
@@ -433,7 +442,7 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
         </Field>
         <div className="span-2">
           <Field label="保費" htmlFor="premiumAmount" required>
-            <input id="premiumAmount" name="premiumAmount" inputMode="decimal" value={form.premiumAmount} onChange={onChange} placeholder="1500" />
+            <input id="premiumAmount" name="premiumAmount" inputMode="decimal" value={form.premiumAmount} onChange={onChange} placeholder="1,500" />
           </Field>
         </div>
         <div className="span-2">

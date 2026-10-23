@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { analyzeClient } from '../src/lib/analysis'
 import { calculateLifeNeed, supportYears, validateDraft } from '../src/lib/lifeNeed'
 import { toAnnualPremium, toMonthlyPremium } from '../src/lib/format'
+import { formatAmountInput } from '../src/lib/parse'
 import { summarizePolicies } from './stats'
 import { validateClient, validatePolicy } from './validate'
 import type { Client, Policy, PolicyWrite } from '../src/types'
@@ -10,6 +11,9 @@ assert.equal(toAnnualPremium(1500, 'monthly'), 18000)
 assert.equal(toAnnualPremium(18000, 'yearly'), 18000)
 assert.equal(toMonthlyPremium(18000, 'yearly'), 1500)
 assert.equal(toMonthlyPremium(10000, 'yearly'), 833.33)
+assert.equal(formatAmountInput('1000000'), '1,000,000')
+assert.equal(formatAmountInput('1,000.50'), '1,000.50')
+assert.equal(formatAmountInput('1000.'), '1,000.')
 
 const client = validateClient({
   chineseName: '  陳大文 ',

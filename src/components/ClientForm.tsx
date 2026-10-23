@@ -2,7 +2,7 @@ import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'r
 import { errorMessage } from '../api'
 import { todayISO } from '../lib/format'
 import { GENDER_OPTIONS, MARITAL_OPTIONS, type Gender, type MaritalStatus } from '../lib/labels'
-import { parseOptionalNumber } from '../lib/parse'
+import { amountCaret, formatAmountInput, parseOptionalNumber } from '../lib/parse'
 import type { Client, ClientWrite } from '../types'
 import { Field } from './Field'
 
@@ -52,7 +52,7 @@ function fromClient(client: Client): ClientFormState {
     occupation: client.occupation,
     maritalStatus: client.maritalStatus,
     dependents: client.dependents == null ? '' : String(client.dependents),
-    monthlyIncome: client.monthlyIncome == null ? '' : String(client.monthlyIncome),
+    monthlyIncome: client.monthlyIncome == null ? '' : formatAmountInput(String(client.monthlyIncome)),
     address: client.address,
     notes: client.notes,
   }
@@ -71,6 +71,14 @@ export function ClientForm({ initial, onSubmit }: { initial?: Client; onSubmit: 
 
   function onChange(event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     const { name, value } = event.target
+    if (name === 'monthlyIncome' && event.target instanceof HTMLInputElement) {
+      const formatted = formatAmountInput(value)
+      const caret = amountCaret(value, formatted, event.target.selectionStart ?? formatted.length)
+      const input = event.target
+      setForm((current) => ({ ...current, monthlyIncome: formatted }))
+      requestAnimationFrame(() => input.setSelectionRange(caret, caret))
+      return
+    }
     setForm((current) => ({ ...current, [name]: value }))
   }
 
@@ -197,7 +205,7 @@ export function ClientForm({ initial, onSubmit }: { initial?: Client; onSubmit: 
           <input id="occupation" name="occupation" value={form.occupation} onChange={onChange} />
         </Field>
         <Field label="每月收入" htmlFor="monthlyIncome" hint="以港幣計算">
-          <input id="monthlyIncome" name="monthlyIncome" inputMode="decimal" value={form.monthlyIncome} onChange={onChange} placeholder="45000" />
+          <input id="monthlyIncome" name="monthlyIncome" inputMode="decimal" value={form.monthlyIncome} onChange={onChange} placeholder="45,000" />
         </Field>
         <div className="span-2">
           <Field label="地址" htmlFor="address">
