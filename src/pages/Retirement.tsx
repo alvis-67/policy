@@ -112,6 +112,7 @@ export function Retirement() {
               <p className="retire-note">100% 表示退休後維持現時開支。供完樓可以調低。預設計到 90 歲，退休前 5%，退休後 3%。</p>
             </details>
             {parsed.error ? <p className="retire-error">{parsed.error}</p> : null}
+            {view ? <Explain view={view} /> : null}
           </section>
         </div>
         <footer className="retire-sign">
@@ -167,9 +168,57 @@ function Stage({ view }: { view: Snapshot }) {
         <Metric label="預計可動用" value={formatMoney(result.assetsFuture, 'HKD')} />
         <Metric label="每月再準備" value={topUp} />
       </div>
-      <p className="retire-fine">
-        退休第一年每月開支 {formatMoney(result.monthlyAtRetirement, 'HKD')}。強積金約 {formatMoney(result.mpfFuture, 'HKD')}，現金及投資約 {formatMoney(result.otherFuture, 'HKD')}。通脹 {input.inflationRate}%，退休前 {input.returnBefore}%，退休後 {input.returnAfter}%，開支比例 {input.expenseRatio}%。
-      </p>
+    </section>
+  )
+}
+
+function Explain({ view }: { view: Snapshot }) {
+  const { input, result } = view
+  const money = (amount: number) => formatMoney(amount, 'HKD')
+  const ratioNote = input.expenseRatio === 100 ? '' : `退休後只計現時開支嘅 ${input.expenseRatio}%。`
+  const spending =
+    result.yearsToRetire <= 0
+      ? `已經到目標退休年齡，每月開支大約係 ${money(result.monthlyAtRetirement)}。${ratioNote}`
+      : input.inflationRate <= 0
+        ? `而家每月開支 ${money(input.monthlyExpense)}。未計通脹，去到 ${input.retireAge} 歲，第一年每月仍然大約係 ${money(result.monthlyAtRetirement)}。${ratioNote}`
+        : `而家每月開支 ${money(input.monthlyExpense)}。未來 ${result.yearsToRetire} 年，物價每年上升 ${input.inflationRate}%，去到 ${input.retireAge} 歲，第一年每月大約要 ${money(result.monthlyAtRetirement)}。${ratioNote}`
+  const nest =
+    input.inflationRate <= 0 && input.returnAfter <= 0
+      ? `由 ${input.retireAge} 歲用到 ${input.untilAge} 歲，一共 ${result.yearsInRetirement} 年。開支冇再上升，亦未計退休後回報，所以退休當日要準備 ${money(result.capitalNeeded)}。`
+      : input.inflationRate <= 0
+        ? `由 ${input.retireAge} 歲用到 ${input.untilAge} 歲，一共 ${result.yearsInRetirement} 年。開支冇再上升，呢筆錢假設仲有每年 ${input.returnAfter}% 回報，所以退休當日要準備 ${money(result.capitalNeeded)}。`
+        : `由 ${input.retireAge} 歲用到 ${input.untilAge} 歲，一共 ${result.yearsInRetirement} 年。每年開支會再跟隨通脹上升，呢筆錢假設仲有每年 ${input.returnAfter}% 回報，所以退休當日要準備 ${money(result.capitalNeeded)}。`
+  const saved =
+    result.yearsToRetire <= 0
+      ? `已經到退休年齡，而家可動用大約 ${money(result.assetsFuture)}。`
+      : `強積金同現金投資，由而家滾到 ${input.retireAge} 歲，每年 ${input.returnBefore}%。到退休大約有 ${money(result.assetsFuture)}。金線就係呢段滾存，虛線就係要準備嘅數。`
+  const answer =
+    result.gap > 0 && result.monthlyTopUp != null
+      ? `${money(result.capitalNeeded)} 減去 ${money(result.assetsFuture)}，尚欠 ${money(result.gap)}。如果由而家開始每月再儲 ${money(result.monthlyTopUp)}，用同一個回報滾存，就可以補上。`
+      : result.gap > 0
+        ? `${money(result.capitalNeeded)} 減去 ${money(result.assetsFuture)}，尚欠 ${money(result.gap)}。已經到退休年齡，呢筆錢要而家準備。`
+        : `滾存後嘅錢多過需要，所以仲有 ${money(result.surplus)}，唔使再額外儲。`
+  const steps = [
+    ['開支會升', spending],
+    ['要用到幾多歲', nest],
+    ['而家嘅錢會變多', saved],
+    ['一減就係缺口', answer],
+  ]
+  return (
+    <section className="retire-explain">
+      <h2>點樣計出嚟</h2>
+      <ol>
+        {steps.map(([title, text], index) => (
+          <li key={title}>
+            <span>{index + 1}</span>
+            <div>
+              <strong>{title}</strong>
+              <p>{text}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <p className="retire-note">保單現金價值未計入。想計埋，加落「現金及投資」。</p>
     </section>
   )
 }
