@@ -29,10 +29,6 @@ export function Layout() {
             <PersonIcon />
             客戶
           </NavLink>
-          <NavLink to="/catalog" className={navClass}>
-            <ListIcon />
-            名稱
-          </NavLink>
           <NavLink to="/analysis" className={navClass}>
             <ScaleIcon />
             保障分析
@@ -47,7 +43,11 @@ export function Layout() {
           </NavLink>
         </nav>
         <div className="sidebar-note">
-          <p>只有已登入的帳號可以查看資料，資料存放在 Supabase。</p>
+          <p className="sidebar-settings-label">設定</p>
+          <NavLink to="/catalog" className={navClass}>
+            <ListIcon />
+            名稱管理
+          </NavLink>
           <p className="block sidebar-actions">
             <button type="button" onClick={() => void downloadBackup()}>
               下載備份

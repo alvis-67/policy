@@ -173,6 +173,14 @@ textarea {
   line-height: 1.65;
 }
 
+.sidebar-settings-label {
+  margin: 0 0.75rem 0.2rem;
+  color: rgba(247, 244, 238, 0.42);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
 .sidebar-note a {
   color: rgba(247, 244, 238, 0.82);
 }
@@ -1297,6 +1305,7 @@ input[type='number'] {
 .sidebar-actions {
   display: flex;
   gap: 0.9rem;
+  margin: 0.75rem 0.75rem 0;
 }
 
 .sidebar-note button {
