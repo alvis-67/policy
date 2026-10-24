@@ -5,6 +5,7 @@ import { assetSeries, calculateRetirement, retirementError, type RetirementInput
 import { toAnnualPremium, toMonthlyPremium } from '../src/lib/format'
 import { coverExtendsPast75, documentsForProduct, suggestManulifeLife } from '../src/lib/lifeProduct'
 import { coverForBudget, manutermRate, premiumToFill } from '../src/lib/manutermQuote'
+import { usdCover, usdFill, usdSkip } from '../src/lib/usdQuote'
 import { manulifeFileError, storageFileName } from '../src/lib/manulifeFileRules'
 import { formatAmountInput } from '../src/lib/parse'
 import { summarizePolicies } from './stats'
@@ -67,6 +68,20 @@ const bought = coverForBudget({ age: 35, sex: 'male', smoker: false, plan: 10, b
 assert.equal(bought?.sumAssured, 1_000_000)
 assert.equal(coverForBudget({ age: 35, sex: 'male', smoker: false, plan: 10, budget: 500 }), null)
 assert.equal(premiumToFill({ age: 35, sex: 'male', smoker: false, plan: 10, gap: 0 }), null)
+const youyue = usdFill({ product: 'youyue', term: 10, age: 35, sex: 'male', smoker: false, hkdGap: 8_000_000 })
+assert.equal(youyue?.usdNotional, 1_000_000)
+assert.equal(youyue?.band, 2)
+assert.equal(youyue?.rate, 37.82)
+assert.equal(youyue?.premiumUsd, 37845)
+assert.equal(youyue?.premiumHkd, 302_760)
+const ying = usdFill({ product: 'yingchuan', term: 10, age: 35, sex: 'male', smoker: false, hkdGap: 8_000_000 })
+assert.equal(ying?.rate, 17.74)
+assert.equal(ying?.premiumUsd, 17_740)
+assert.equal(ying?.premiumHkd, 141_920)
+assert.equal(usdCover({ product: 'youyue', term: 10, age: 35, sex: 'male', smoker: false, hkdBudget: 302_760 })?.usdNotional, 1_000_000)
+assert.equal(usdSkip('yingchuan', 20, 35, false), 'term')
+assert.equal(usdSkip('yingchuan', 10, 10, true), 'juvenile-smoker')
+assert.equal(usdFill({ product: 'yingchuan', term: 'single', age: 10, sex: 'male', smoker: false, hkdGap: 8_000_000 })?.rate, 125.38)
 
 const client = validateClient({
   chineseName: '  陳大文 ',

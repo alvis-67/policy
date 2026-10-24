@@ -1510,6 +1510,12 @@ input[type='number'] {
   letter-spacing: 0.08em;
 }
 
+.life-quote-usd {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(20, 48, 44, 0.12);
+}
+
 .life-total {
   margin: 0.2rem 0 0.35rem;
   font-family: var(--font-serif);

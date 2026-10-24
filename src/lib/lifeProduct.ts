@@ -85,7 +85,7 @@ export function suggestManulifeLife(input: { age: number | null; gap: number; co
   const lead =
     age == null
       ? '按港幣人壽缺口建議。未有出生日期，投保年齡要再核對。精選定期壽險的港幣保費見上方。'
-      : '按港幣人壽缺口和照顧年期建議。精選定期壽險的港幣保費見上方。美元計劃不會兌換，也不會自動報價。'
+      : '按港幣人壽缺口和照顧年期建議。精選定期壽險的港幣保費見上方。美元計劃按 HKD 8 = USD 1 換算。'
 
   return { lead, picks }
 }

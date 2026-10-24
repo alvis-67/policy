@@ -9,6 +9,7 @@ import { amountCaret, formatAmountInput, parseOptionalNumber } from '../lib/pars
 import { GENDER_OPTIONS, labelOf, MARITAL_OPTIONS } from '../lib/labels'
 import { coverExtendsPast75, documentsForProduct, suggestManulifeLife, type LifePick } from '../lib/lifeProduct'
 import { coverForBudget, premiumToFill, termPlansForAge, type TermSex } from '../lib/manutermQuote'
+import { usdCover, usdFill, usdSkip, type UsdTerm } from '../lib/usdQuote'
 import { listManulifeDocuments, openManulifeDocument, type ManulifeDocument } from '../lib/manulifeFiles'
 import {
   calculateLifeNeed,
@@ -122,6 +123,7 @@ export function LifePlanDetail() {
   const [files, setFiles] = useState<ManulifeDocument[]>([])
   const [smoker, setSmoker] = useState(false)
   const [budget, setBudget] = useState('')
+  const [payTerm, setPayTerm] = useState<UsdTerm>(10)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -410,6 +412,8 @@ export function LifePlanDetail() {
           onSmoker={setSmoker}
           budget={budget}
           onBudget={setBudget}
+          payTerm={payTerm}
+          onPayTerm={setPayTerm}
         />
       </div>
       <ManulifePicks
@@ -548,6 +552,8 @@ function NeedResult({
   onSmoker,
   budget,
   onBudget,
+  payTerm,
+  onPayTerm,
 }: {
   result: LifeNeedResult
   started: boolean
@@ -559,6 +565,8 @@ function NeedResult({
   onSmoker: (smoker: boolean) => void
   budget: string
   onBudget: (budget: string) => void
+  payTerm: UsdTerm
+  onPayTerm: (term: UsdTerm) => void
 }) {
   const shortfall = Math.max(0, result.gap)
   const shown = useAnimatedAmount(shortfall)
@@ -605,7 +613,18 @@ function NeedResult({
         </dl>
         {result.foreignLife ? <p className="hint">另有{result.foreignLife}人壽，沒有兌換，亦沒有從港幣差額扣除。</p> : null}
       </div>
-      <TermEstimate age={age} sex={sex} smoker={smoker} onSmoker={onSmoker} budget={budget} onBudget={onBudget} gap={result.gap} started={started} />
+      <TermEstimate
+        age={age}
+        sex={sex}
+        smoker={smoker}
+        onSmoker={onSmoker}
+        budget={budget}
+        onBudget={onBudget}
+        gap={result.gap}
+        started={started}
+        payTerm={payTerm}
+        onPayTerm={onPayTerm}
+      />
     </aside>
   )
 }
@@ -684,7 +703,7 @@ function ManulifePicks({
           })}
         </div>
       )}
-      <p className="hint">最終購買由顧問判斷。精選定期壽險的港幣估算見上方，只計首段水平保費。美元計劃不報價。</p>
+      <p className="hint">最終購買由顧問判斷。精選定期壽險的港幣估算，以及美元計劃按 HKD 8 = USD 1 的換算，見上方。</p>
     </section>
   )
 }
@@ -705,6 +724,8 @@ function TermEstimate({
   onBudget,
   gap,
   started,
+  payTerm,
+  onPayTerm,
 }: {
   age: number | null
   sex: TermSex | ''
@@ -714,6 +735,8 @@ function TermEstimate({
   onBudget: (budget: string) => void
   gap: number
   started: boolean
+  payTerm: UsdTerm
+  onPayTerm: (term: UsdTerm) => void
 }) {
   const plans = age == null || sex === '' ? [] : termPlansForAge(age)
   const parsedBudget = parseOptionalNumber(budget)
@@ -759,9 +782,93 @@ function TermEstimate({
       {age != null && sex !== '' && plans.length > 0 && typeof parsedBudget === 'number' ? (
         <BudgetCoverLines age={age} sex={sex} smoker={smoker} budget={parsedBudget} plans={plans} />
       ) : null}
-      <p className="hint">率表是港幣，2024 年 1 月。已加每年保單費 200。只計首段水平保費，之後續保未計。美元計劃不用這條數。最終保費以建議書為準。</p>
+      <p className="hint">率表是港幣，2024 年 1 月。已加每年保單費 200。只計首段水平保費，之後續保未計。</p>
+      <UsdPlans age={age} sex={sex} smoker={smoker} budget={parsedBudget} gap={gap} started={started} payTerm={payTerm} onPayTerm={onPayTerm} />
+      <p className="hint">匯率固定為 HKD 8 = USD 1。美元名義金額是港幣金額除以 8。優越終身保的分期保費另加每年保單費 25 美元。盈傳用標準風險級別、居住地編碼 A。卓越終身保未有自己的保費率表。最終保費以建議書為準。</p>
     </div>
   )
+}
+
+function UsdPlans({
+  age,
+  sex,
+  smoker,
+  budget,
+  gap,
+  started,
+  payTerm,
+  onPayTerm,
+}: {
+  age: number | null
+  sex: TermSex | ''
+  smoker: boolean
+  budget: number | 'invalid' | null
+  gap: number
+  started: boolean
+  payTerm: UsdTerm
+  onPayTerm: (term: UsdTerm) => void
+}) {
+  const terms: UsdTerm[] = [10, 20, 25, 5, 'single']
+  const ready = age != null && sex !== ''
+  return (
+    <div className="life-quote-usd">
+      <p className="dt">美元終身計劃</p>
+      <div className="life-quote-choices">
+        {terms.map((term) => (
+          <button key={term} type="button" className={payTerm === term ? 'is-on' : ''} onClick={() => onPayTerm(term)}>
+            {term === 'single' ? '整付' : `${term} 年`}
+          </button>
+        ))}
+      </div>
+      {!ready ? <p className="hint">客戶資料未有出生日期或性別，未能用率表估算。</p> : null}
+      {ready && (!started || gap <= 0) ? (
+        <p className="hint">{started ? '缺口已經補上，不必為填補差額而計保費。' : '填上照顧費、債務或資金後，這裡會算出填補缺口的保費。'}</p>
+      ) : null}
+      {ready
+        ? (['youyue', 'yingchuan'] as const).map((product) => {
+            const name = product === 'youyue' ? '優越終身保' : '盈傳創富保障計劃 3'
+            const skip = usdSkip(product, payTerm, age, smoker)
+            const fill = !skip && started && gap > 0 ? usdFill({ product, term: payTerm, age, sex, smoker, hkdGap: gap }) : null
+            const cover = !skip && payTerm !== 'single' && typeof budget === 'number' ? usdCover({ product, term: payTerm, age, sex, smoker, hkdBudget: budget }) : null
+            if (skip && (!started || gap <= 0) && typeof budget !== 'number') return null
+            return (
+              <div key={product} className="life-quote-plan">
+                <p className="life-quote-name">
+                  {name} · {payTerm === 'single' ? '整付' : `${payTerm} 年繳`}
+                </p>
+                {skip ? <p className="hint">{usdSkipText(skip)}</p> : null}
+                {fill ? (
+                  <>
+                    <p className="life-quote-label">{payTerm === 'single' ? '填補缺口一次過' : '填補缺口每年'}</p>
+                    <p className="life-total">{formatNeed(fill.premiumHkd)}</p>
+                    <p className="hint">
+                      {formatMoney(fill.premiumUsd, 'USD')} · 名義金額 {formatMoney(fill.usdNotional, 'USD')}
+                      {fill.band ? ` · 組別 ${fill.band}` : ' · 標準風險級別'} · 每 1,000 保費率 {fill.rate.toFixed(2)}
+                      {fill.raisedToMinimumSum ? `。換成美元後少於最低名義金額，以上按 ${formatMoney(fill.usdNotional, 'USD')} 計算。` : ''}
+                      {fill.raisedToMinimumPremium ? '。低於最低每年保費 160 美元，以上按這個下限計算。' : ''}
+                    </p>
+                  </>
+                ) : null}
+                {cover ? (
+                  <p className="hint">
+                    每年預算可買名義金額 {formatMoney(cover.usdNotional, 'USD')}（約 {formatNeed(cover.hkdNotional)}），每年保費 {formatNeed(cover.premiumHkd)}（{formatMoney(cover.premiumUsd, 'USD')}）
+                    {cover.band ? `，組別 ${cover.band}` : ''}。
+                  </p>
+                ) : null}
+                {!skip && payTerm !== 'single' && typeof budget === 'number' && !cover ? <p className="hint">這個預算未夠買最低名義金額。</p> : null}
+              </div>
+            )
+          })
+        : null}
+      {payTerm === 'single' ? <p className="hint">整付是一次過保費。每年預算不會用來估算整付保額。</p> : null}
+    </div>
+  )
+}
+
+function usdSkipText(skip: 'term' | 'age' | 'juvenile-smoker') {
+  if (skip === 'term') return '這款沒有這個繳付期。'
+  if (skip === 'age') return '這個繳付期不適用這位客人的年齡。'
+  return '0 至 17 歲只適用標準非吸煙，未能按吸煙計算。'
 }
 
 function BudgetCoverLines({
