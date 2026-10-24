@@ -11,7 +11,7 @@ export function manulifeFileError(name: string, size: number) {
 }
 
 export function storageFileName(name: string) {
-  const base = name.split(/[/\\]/).pop() ?? 'file'
-  const cleaned = base.replace(/[^\w.\-\u4e00-\u9fff（）()]+/g, '_').slice(0, 120)
-  return cleaned || 'file'
+  const base = name.split(/[/\\]/).pop() ?? ''
+  const ext = base.split('.').pop()?.toLowerCase() ?? ''
+  return ALLOWED.has(ext) ? `file.${ext}` : 'file'
 }

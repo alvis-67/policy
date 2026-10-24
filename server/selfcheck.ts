@@ -18,7 +18,8 @@ assert.equal(formatAmountInput('1,000.50'), '1,000.50')
 assert.equal(formatAmountInput('1000.'), '1,000.')
 assert.equal(manulifeFileError('小冊子.pdf', 1200), null)
 assert.equal(manulifeFileError('保費.txt', 1200), '只可以上傳 PDF、圖片或試算表。')
-assert.equal(storageFileName('C:\\檔案\\盈傳 小冊子.pdf'), '盈傳_小冊子.pdf')
+assert.equal(storageFileName('C:\\檔案\\盈傳 小冊子.pdf'), 'file.pdf')
+assert.equal(storageFileName('卓越終身保（優越終身保）- 產品手冊.pdf'), 'file.pdf')
 
 const client = validateClient({
   chineseName: '  陳大文 ',
