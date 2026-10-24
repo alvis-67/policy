@@ -1409,6 +1409,34 @@ input[type='number'] {
   box-shadow: 0 16px 40px rgba(20, 48, 44, 0.18);
 }
 
+.life-pick-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.life-pick {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.85rem;
+  background: #f7f4ee;
+}
+
+.life-pick h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.life-pick p {
+  margin: 0;
+}
+
+.life-pick-fit {
+  color: #8a6432;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+}
+
 .life-result-head,
 .life-result-body {
   padding: 1.15rem 1.2rem;

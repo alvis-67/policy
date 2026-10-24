@@ -7,6 +7,8 @@ import { PageHeader } from '../components/PageHeader'
 import { calcAge, displayName, formatMoney, formatPhone, nameInitial } from '../lib/format'
 import { amountCaret, formatAmountInput } from '../lib/parse'
 import { GENDER_OPTIONS, labelOf, MARITAL_OPTIONS } from '../lib/labels'
+import { coverExtendsPast75, documentsForProduct, suggestManulifeLife, type LifePick } from '../lib/lifeProduct'
+import { listManulifeDocuments, openManulifeDocument, type ManulifeDocument } from '../lib/manulifeFiles'
 import {
   calculateLifeNeed,
   draftFromPlan,
@@ -116,6 +118,7 @@ export function LifePlanDetail() {
   const [policies, setPolicies] = useState<Policy[]>([])
   const [draft, setDraft] = useState<LifeDraft>(emptyDraft())
   const [ready, setReady] = useState(true)
+  const [files, setFiles] = useState<ManulifeDocument[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -149,6 +152,20 @@ export function LifePlanDetail() {
   useEffect(() => {
     document.title = client ? `${displayName(client)} · 專業理財分析` : '專業理財分析 · 保冊'
   }, [client])
+
+  useEffect(() => {
+    let cancel = false
+    listManulifeDocuments()
+      .then((result) => {
+        if (!cancel) setFiles(result.documents.filter((row) => row.policyType === 'life'))
+      })
+      .catch(() => {
+        if (!cancel) setFiles([])
+      })
+    return () => {
+      cancel = true
+    }
+  }, [])
 
   const preview = useMemo(() => previewDraft(draft), [draft])
   const result = useMemo(() => calculateLifeNeed(preview, policies), [preview, policies])
@@ -386,6 +403,17 @@ export function LifePlanDetail() {
           onRate={(inflationRate) => update({ ...draft, inflationRate })}
         />
       </div>
+      <ManulifePicks
+        suggestion={suggestManulifeLife({
+          age,
+          gap: result.gap,
+          coverPast75: coverExtendsPast75(age, preview),
+        })}
+        files={files}
+        onOpen={(path) => {
+          openManulifeDocument(path).catch((reason) => setError(errorMessage(reason)))
+        }}
+      />
     </div>
   )
 }
@@ -592,6 +620,58 @@ function Fact({ label, value }: { label: string; value: string }) {
       <dd>{value}</dd>
     </div>
   )
+}
+
+function ManulifePicks({
+  suggestion,
+  files,
+  onOpen,
+}: {
+  suggestion: { lead: string; picks: LifePick[] }
+  files: ManulifeDocument[]
+  onOpen: (path: string) => void
+}) {
+  return (
+    <section className="card pad stack life-picks">
+      <p className="life-kicker">
+        <span>08</span>可以考慮的宏利人壽
+      </p>
+      <p className="hint">{suggestion.lead}</p>
+      {suggestion.picks.length === 0 ? null : (
+        <div className="life-pick-list">
+          {suggestion.picks.map((pick) => {
+            const docs = documentsForProduct(pick.name, files)
+            return (
+              <article key={pick.name} className="life-pick">
+                <p className="life-pick-fit">{pick.fit}</p>
+                <h3>{pick.name}</h3>
+                <p>{pick.reason}</p>
+                {docs.length > 0 ? (
+                  <div className="actions">
+                    {docs.map((doc) => (
+                      <button key={doc.id} type="button" className="btn btn-ghost" onClick={() => onOpen(doc.storagePath)}>
+                        {fileLabel(doc)}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="hint">尚未上傳這款的小冊子或保費率表。</p>
+                )}
+              </article>
+            )
+          })}
+        </div>
+      )}
+      <p className="hint">最終購買由顧問判斷。保費率表的欄位未能可靠自動讀取，所以這裡不報保費。</p>
+    </section>
+  )
+}
+
+function fileLabel(doc: ManulifeDocument) {
+  const name = doc.fileName
+  if (/手冊|小冊/.test(name)) return '小冊子'
+  if (/保費|率表/.test(name)) return '保費率表'
+  return doc.fileKind === 'brochure' ? '小冊子' : '保費率表'
 }
 
 function onAmount(event: ChangeEvent<HTMLInputElement>, apply: (value: string) => void) {

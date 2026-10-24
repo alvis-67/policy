@@ -3,6 +3,7 @@ import { analyzeClient } from '../src/lib/analysis'
 import { calculateLifeNeed, supportYears, validateDraft } from '../src/lib/lifeNeed'
 import { assetSeries, calculateRetirement, retirementError, type RetirementInput } from '../src/lib/retirement'
 import { toAnnualPremium, toMonthlyPremium } from '../src/lib/format'
+import { coverExtendsPast75, documentsForProduct, suggestManulifeLife } from '../src/lib/lifeProduct'
 import { manulifeFileError, storageFileName } from '../src/lib/manulifeFileRules'
 import { formatAmountInput } from '../src/lib/parse'
 import { summarizePolicies } from './stats'
@@ -20,6 +21,35 @@ assert.equal(manulifeFileError('小冊子.pdf', 1200), null)
 assert.equal(manulifeFileError('保費.txt', 1200), '只可以上傳 PDF、圖片或試算表。')
 assert.equal(storageFileName('C:\\檔案\\盈傳 小冊子.pdf'), 'file.pdf')
 assert.equal(storageFileName('卓越終身保（優越終身保）- 產品手冊.pdf'), 'file.pdf')
+
+const emptyPlan = {
+  funeralCost: 0,
+  siblingCount: 1,
+  inflationRate: 0,
+  childUntil: 22,
+  parentUntil: 88,
+  reserveAmount: 0,
+  spouse: null,
+  members: [],
+  debts: [],
+  assets: [],
+}
+assert.equal(suggestManulifeLife({ age: 35, gap: 1_000_000, coverPast75: false }).picks[0]?.name, '精選定期壽險')
+assert.equal(suggestManulifeLife({ age: 60, gap: 1_000_000, coverPast75: true }).picks[0]?.name, '優越終身保')
+assert.equal(suggestManulifeLife({ age: 80, gap: 1, coverPast75: false }).picks.length, 0)
+assert.equal(suggestManulifeLife({ age: 40, gap: 0, coverPast75: false }).picks[0]?.name, '盈傳創富保障計劃3')
+assert.equal(
+  coverExtendsPast75(60, { ...emptyPlan, members: [{ id: '1', role: 'parent', name: '', age: 70, monthlyCost: 3000 }] }),
+  true,
+)
+assert.equal(
+  coverExtendsPast75(40, { ...emptyPlan, members: [{ id: '1', role: 'child', name: '', age: 10, monthlyCost: 3000 }] }),
+  false,
+)
+assert.equal(documentsForProduct('優越終身保', [{ productName: '卓越終身保', fileName: '優越終身保 - 保費率表.pdf' }]).length, 1)
+assert.equal(documentsForProduct('卓越終身保', [{ productName: '卓越終身保', fileName: '優越終身保 - 保費率表.pdf' }]).length, 0)
+assert.equal(documentsForProduct('卓越終身保', [{ productName: '卓越終身保', fileName: '卓越終身保 _ 優越終身保 - 產品手冊.pdf' }]).length, 1)
+assert.equal(documentsForProduct('精選定期壽險', [{ productName: '盈傳創富保障計劃3', fileName: '率表.pdf' }]).length, 0)
 
 const client = validateClient({
   chineseName: '  陳大文 ',
