@@ -73,6 +73,15 @@ export function calculateRetirement(input: RetirementInput): RetirementResult {
   }
 }
 
+export function assetSeries(input: RetirementInput) {
+  const years = Math.max(0, input.retireAge - input.currentAge)
+  const points: number[] = []
+  for (let year = 0; year <= years; year += 1) {
+    points.push(dollars(grow(input.mpfBalance, input.mpfMonthly, input.returnBefore, year) + grow(input.otherAssets, 0, input.returnBefore, year)))
+  }
+  return points
+}
+
 function nestEgg(annual: number, years: number, inflationPercent: number, returnPercent: number) {
   if (years <= 0 || annual <= 0) return 0
   const growth = inflationPercent / 100

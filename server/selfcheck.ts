@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { analyzeClient } from '../src/lib/analysis'
 import { calculateLifeNeed, supportYears, validateDraft } from '../src/lib/lifeNeed'
-import { calculateRetirement, retirementError, type RetirementInput } from '../src/lib/retirement'
+import { assetSeries, calculateRetirement, retirementError, type RetirementInput } from '../src/lib/retirement'
 import { toAnnualPremium, toMonthlyPremium } from '../src/lib/format'
 import { formatAmountInput } from '../src/lib/parse'
 import { summarizePolicies } from './stats'
@@ -265,6 +265,10 @@ assert.equal(quiet.capitalNeeded, 600000)
 assert.equal(quiet.mpfFuture, 160000)
 assert.equal(quiet.gap, 440000)
 assert.equal(quiet.monthlyTopUp, 7333)
+const quietSeries = assetSeries(retirementCaseInput({ inflationRate: 0, returnBefore: 0, returnAfter: 0, mpfBalance: 100000, mpfMonthly: 1000, otherAssets: 0, monthlyExpense: 10000, currentAge: 60, retireAge: 65, untilAge: 70 }))
+assert.equal(quietSeries.length, 6)
+assert.equal(quietSeries[0], 100000)
+assert.equal(quietSeries[5], 160000)
 
 const invested = retirementCase({ currentAge: 64, retireAge: 65, untilAge: 67, monthlyExpense: 1000, inflationRate: 0, returnBefore: 0, returnAfter: 10, mpfBalance: 0, mpfMonthly: 0, otherAssets: 0 })
 assert.equal(invested.capitalNeeded, 22909)
