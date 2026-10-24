@@ -9,6 +9,7 @@ import { amountCaret, formatAmountInput, parseOptionalNumber } from '../lib/pars
 import { GENDER_OPTIONS, labelOf, MARITAL_OPTIONS } from '../lib/labels'
 import { coverExtendsPast75, documentsForProduct, suggestManulifeLife, type LifePick } from '../lib/lifeProduct'
 import { coverForBudget, premiumToFill, termPlansForAge, type TermSex } from '../lib/manutermQuote'
+import { mixBudget, type BudgetMix } from '../lib/budgetMix'
 import { usdCover, usdFill, usdSkip, type UsdTerm } from '../lib/usdQuote'
 import { listManulifeDocuments, openManulifeDocument, type ManulifeDocument } from '../lib/manulifeFiles'
 import {
@@ -830,6 +831,7 @@ function UsdPlans({
             const skip = usdSkip(product, payTerm, age, smoker)
             const fill = !skip && started && gap > 0 ? usdFill({ product, term: payTerm, age, sex, smoker, hkdGap: gap }) : null
             const cover = !skip && payTerm !== 'single' && typeof budget === 'number' ? usdCover({ product, term: payTerm, age, sex, smoker, hkdBudget: budget }) : null
+            const mix = !skip && started && gap > 0 && typeof budget === 'number' ? mixBudget({ age, sex, smoker, hkdGap: gap, hkdBudget: budget, product, term: payTerm }) : null
             if (skip && (!started || gap <= 0) && typeof budget !== 'number') return null
             return (
               <div key={product} className="life-quote-plan">
@@ -837,6 +839,7 @@ function UsdPlans({
                   {name} · {payTerm === 'single' ? '整付' : `${payTerm} 年繳`}
                 </p>
                 {skip ? <p className="hint">{usdSkipText(skip)}</p> : null}
+                {mix ? <MixLines name={name} mix={mix} /> : null}
                 {fill ? (
                   <>
                     <p className="life-quote-label">{payTerm === 'single' ? '填補缺口一次過' : '填補缺口每年'}</p>
@@ -862,6 +865,40 @@ function UsdPlans({
         : null}
       {payTerm === 'single' ? <p className="hint">整付是一次過保費。每年預算不會用來估算整付保額。</p> : null}
     </div>
+  )
+}
+
+function MixLines({ name, mix }: { name: string; mix: BudgetMix }) {
+  if (mix.kind === 'mix') {
+    return (
+      <>
+        <p className="life-quote-label">預算分拆後補滿缺口</p>
+        <p className="hint">
+          精選定期壽險 {mix.termPlan}：每年 {formatNeed(mix.term.premium)} 買到保額 {formatNeed(mix.term.sumAssured)}。
+        </p>
+        <p className="hint">
+          {name}：每年 {formatNeed(mix.whole.premiumHkd)}（{formatMoney(mix.whole.premiumUsd, 'USD')}）買到名義金額 {formatMoney(mix.whole.usdNotional, 'USD')}（約 {formatNeed(mix.whole.hkdNotional)}）。
+        </p>
+        <p className="hint">兩款保額加起來剛剛補上港幣缺口。精選只保障到 75 歲，終身計劃的名義金額會一直有效。</p>
+      </>
+    )
+  }
+  if (mix.kind === 'whole-only') {
+    return <p className="hint">預算足夠只用{name}補滿缺口，每年 {formatNeed(mix.whole.premiumHkd)}（{formatMoney(mix.whole.premiumUsd, 'USD')}），不必再買精選。</p>
+  }
+  if (mix.kind === 'term-only') {
+    return (
+      <p className="hint">
+        預算足夠用精選定期壽險 {mix.termPlan} 補滿缺口，每年 {formatNeed(mix.term.premium)}。若同時買{name}，剩下的預算就未能補上其餘缺口。
+      </p>
+    )
+  }
+  const termCover = mix.term?.sumAssured ?? 0
+  const wholeCover = mix.whole?.hkdNotional ?? 0
+  return (
+    <p className="hint">
+      這個每年預算未能補滿缺口。全部買精選可買保額 {formatNeed(termCover)}。全部買{name}可買約 {formatNeed(wholeCover)}。
+    </p>
   )
 }
 

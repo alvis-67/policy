@@ -5,6 +5,7 @@ import { assetSeries, calculateRetirement, retirementError, type RetirementInput
 import { toAnnualPremium, toMonthlyPremium } from '../src/lib/format'
 import { coverExtendsPast75, documentsForProduct, suggestManulifeLife } from '../src/lib/lifeProduct'
 import { coverForBudget, manutermRate, premiumToFill } from '../src/lib/manutermQuote'
+import { mixBudget } from '../src/lib/budgetMix'
 import { usdCover, usdFill, usdSkip } from '../src/lib/usdQuote'
 import { manulifeFileError, storageFileName } from '../src/lib/manulifeFileRules'
 import { formatAmountInput } from '../src/lib/parse'
@@ -82,6 +83,17 @@ assert.equal(usdCover({ product: 'youyue', term: 10, age: 35, sex: 'male', smoke
 assert.equal(usdSkip('yingchuan', 20, 35, false), 'term')
 assert.equal(usdSkip('yingchuan', 10, 10, true), 'juvenile-smoker')
 assert.equal(usdFill({ product: 'yingchuan', term: 'single', age: 10, sex: 'male', smoker: false, hkdGap: 8_000_000 })?.rate, 125.38)
+const mix = mixBudget({ age: 35, sex: 'male', smoker: false, hkdGap: 3_120_000, hkdBudget: 30_000, product: 'youyue', term: 20 })
+assert.equal(mix?.kind, 'mix')
+if (mix?.kind === 'mix') {
+  assert.equal(mix.termPlan, 20)
+  assert.ok(mix.term.premium + mix.whole.premiumHkd <= 30_000.01)
+  assert.ok(Math.abs(mix.term.sumAssured + mix.whole.hkdNotional - 3_120_000) < 1)
+  assert.ok(mix.whole.hkdNotional > mix.term.sumAssured * 0.4)
+  assert.ok(mix.term.sumAssured > 1_000_000)
+}
+assert.equal(mixBudget({ age: 35, sex: 'male', smoker: false, hkdGap: 3_120_000, hkdBudget: 100_000, product: 'youyue', term: 20 })?.kind, 'whole-only')
+assert.equal(mixBudget({ age: 35, sex: 'male', smoker: false, hkdGap: 3_120_000, hkdBudget: 3_000, product: 'youyue', term: 20 })?.kind, 'short')
 
 const client = validateClient({
   chineseName: '  陳大文 ',
