@@ -5,9 +5,10 @@ import { EmptyState } from '../components/EmptyState'
 import { Field } from '../components/Field'
 import { PageHeader } from '../components/PageHeader'
 import { calcAge, displayName, formatMoney, formatPhone, nameInitial } from '../lib/format'
-import { amountCaret, formatAmountInput } from '../lib/parse'
+import { amountCaret, formatAmountInput, parseOptionalNumber } from '../lib/parse'
 import { GENDER_OPTIONS, labelOf, MARITAL_OPTIONS } from '../lib/labels'
 import { coverExtendsPast75, documentsForProduct, suggestManulifeLife, type LifePick } from '../lib/lifeProduct'
+import { coverForBudget, premiumToFill, termPlansForAge, type TermSex } from '../lib/manutermQuote'
 import { listManulifeDocuments, openManulifeDocument, type ManulifeDocument } from '../lib/manulifeFiles'
 import {
   calculateLifeNeed,
@@ -119,6 +120,8 @@ export function LifePlanDetail() {
   const [draft, setDraft] = useState<LifeDraft>(emptyDraft())
   const [ready, setReady] = useState(true)
   const [files, setFiles] = useState<ManulifeDocument[]>([])
+  const [smoker, setSmoker] = useState(false)
+  const [budget, setBudget] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -401,6 +404,12 @@ export function LifePlanDetail() {
           started={planHasInputs(preview)}
           rateText={draft.inflationRate}
           onRate={(inflationRate) => update({ ...draft, inflationRate })}
+          age={age}
+          sex={client.gender === 'male' || client.gender === 'female' ? client.gender : ''}
+          smoker={smoker}
+          onSmoker={setSmoker}
+          budget={budget}
+          onBudget={setBudget}
         />
       </div>
       <ManulifePicks
@@ -533,11 +542,23 @@ function NeedResult({
   started,
   rateText,
   onRate,
+  age,
+  sex,
+  smoker,
+  onSmoker,
+  budget,
+  onBudget,
 }: {
   result: LifeNeedResult
   started: boolean
   rateText: string
   onRate: (rate: string) => void
+  age: number | null
+  sex: TermSex | ''
+  smoker: boolean
+  onSmoker: (smoker: boolean) => void
+  budget: string
+  onBudget: (budget: string) => void
 }) {
   const shortfall = Math.max(0, result.gap)
   const shown = useAnimatedAmount(shortfall)
@@ -584,6 +605,7 @@ function NeedResult({
         </dl>
         {result.foreignLife ? <p className="hint">另有{result.foreignLife}人壽，沒有兌換，亦沒有從港幣差額扣除。</p> : null}
       </div>
+      <TermEstimate age={age} sex={sex} smoker={smoker} onSmoker={onSmoker} budget={budget} onBudget={onBudget} gap={result.gap} started={started} />
     </aside>
   )
 }
@@ -662,7 +684,7 @@ function ManulifePicks({
           })}
         </div>
       )}
-      <p className="hint">最終購買由顧問判斷。保費率表的欄位未能可靠自動讀取，所以這裡不報保費。</p>
+      <p className="hint">最終購買由顧問判斷。精選定期壽險的港幣估算見上方，只計首段水平保費。美元計劃不報價。</p>
     </section>
   )
 }
@@ -672,6 +694,104 @@ function fileLabel(doc: ManulifeDocument) {
   if (/手冊|小冊/.test(name)) return '小冊子'
   if (/保費|率表/.test(name)) return '保費率表'
   return doc.fileKind === 'brochure' ? '小冊子' : '保費率表'
+}
+
+function TermEstimate({
+  age,
+  sex,
+  smoker,
+  onSmoker,
+  budget,
+  onBudget,
+  gap,
+  started,
+}: {
+  age: number | null
+  sex: TermSex | ''
+  smoker: boolean
+  onSmoker: (smoker: boolean) => void
+  budget: string
+  onBudget: (budget: string) => void
+  gap: number
+  started: boolean
+}) {
+  const plans = age == null || sex === '' ? [] : termPlansForAge(age)
+  const parsedBudget = parseOptionalNumber(budget)
+  return (
+    <div className="life-quote">
+      <p className="dt">精選定期壽險 · 港幣</p>
+      <div className="life-quote-choices">
+        <button type="button" className={!smoker ? 'is-on' : ''} onClick={() => onSmoker(false)}>
+          非吸煙
+        </button>
+        <button type="button" className={smoker ? 'is-on' : ''} onClick={() => onSmoker(true)}>
+          吸煙
+        </button>
+      </div>
+      {age == null || sex === '' ? (
+        <p className="hint">客戶資料未有出生日期或性別，未能用率表估算。</p>
+      ) : plans.length === 0 ? (
+        <p className="hint">投保年齡是 16 至 65 歲，這位客人未能用這張率表估算。</p>
+      ) : !started || gap <= 0 ? (
+        <p className="hint">{started ? '缺口已經補上，不必為填補差額而計保費。' : '填上照顧費、債務或資金後，這裡會算出填補缺口的每年保費。'}</p>
+      ) : (
+        plans.map((plan) => {
+          const fill = premiumToFill({ age, sex, smoker, plan, gap })
+          if (!fill) return null
+          return (
+            <div key={plan} className="life-quote-plan">
+              <p className="life-quote-name">{plan === 10 ? '10 年水平保費' : '20 年水平保費'}</p>
+              <p className="life-quote-label">填補缺口每年</p>
+              <p className="life-total">{formatNeed(fill.premium)}</p>
+              <p className="hint">
+                保額 {formatNeed(fill.sumAssured)} · 組別 {fill.band} · 每 1,000 保費率 {fill.rate.toFixed(2)}
+                {fill.raisedToMinimumSum ? '。缺口少於最低保額 320,000，以上按最低保額計算。' : ''}
+                {fill.raisedToMinimumPremium ? '。低於最低每年保費 800，以上按 800 計算。' : ''}
+              </p>
+            </div>
+          )
+        })
+      )}
+      <Field label="每年預算" htmlFor="lifeBudget" hint="用來估算這個預算可以買到幾大保額。">
+        <input id="lifeBudget" inputMode="decimal" value={budget} placeholder="30,000" onChange={(event) => onAmount(event, onBudget)} />
+      </Field>
+      {plans.length > 0 && parsedBudget === 'invalid' ? <p className="hint">請輸入有效的每年預算。</p> : null}
+      {age != null && sex !== '' && plans.length > 0 && typeof parsedBudget === 'number' ? (
+        <BudgetCoverLines age={age} sex={sex} smoker={smoker} budget={parsedBudget} plans={plans} />
+      ) : null}
+      <p className="hint">率表是港幣，2024 年 1 月。已加每年保單費 200。只計首段水平保費，之後續保未計。美元計劃不用這條數。最終保費以建議書為準。</p>
+    </div>
+  )
+}
+
+function BudgetCoverLines({
+  age,
+  sex,
+  smoker,
+  budget,
+  plans,
+}: {
+  age: number
+  sex: TermSex
+  smoker: boolean
+  budget: number
+  plans: Array<10 | 20>
+}) {
+  const covers = plans.map((plan) => ({ plan, cover: coverForBudget({ age, sex, smoker, plan, budget }) }))
+  if (covers.every((item) => item.cover == null)) {
+    return <p className="hint">{budget < 800 ? '每年預算低於最低保費 800。' : '這個預算未夠買最低保額 320,000。'}</p>
+  }
+  return (
+    <>
+      {covers.map(({ plan, cover }) => (
+        <p key={plan} className="hint">
+          {cover
+            ? `${plan} 年水平保費：可買保額 ${formatNeed(cover.sumAssured)}，每年保費 ${formatNeed(cover.premium)}，組別 ${cover.band}。`
+            : `${plan} 年水平保費：這個預算未夠買最低保額 320,000。`}
+        </p>
+      ))}
+    </>
+  )
 }
 
 function onAmount(event: ChangeEvent<HTMLInputElement>, apply: (value: string) => void) {

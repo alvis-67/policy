@@ -4,6 +4,7 @@ import { calculateLifeNeed, supportYears, validateDraft } from '../src/lib/lifeN
 import { assetSeries, calculateRetirement, retirementError, type RetirementInput } from '../src/lib/retirement'
 import { toAnnualPremium, toMonthlyPremium } from '../src/lib/format'
 import { coverExtendsPast75, documentsForProduct, suggestManulifeLife } from '../src/lib/lifeProduct'
+import { coverForBudget, manutermRate, premiumToFill } from '../src/lib/manutermQuote'
 import { manulifeFileError, storageFileName } from '../src/lib/manulifeFileRules'
 import { formatAmountInput } from '../src/lib/parse'
 import { summarizePolicies } from './stats'
@@ -50,6 +51,22 @@ assert.equal(documentsForProduct('優越終身保', [{ productName: '卓越終�
 assert.equal(documentsForProduct('卓越終身保', [{ productName: '卓越終身保', fileName: '優越終身保 - 保費率表.pdf' }]).length, 0)
 assert.equal(documentsForProduct('卓越終身保', [{ productName: '卓越終身保', fileName: '卓越終身保 _ 優越終身保 - 產品手冊.pdf' }]).length, 1)
 assert.equal(documentsForProduct('精選定期壽險', [{ productName: '盈傳創富保障計劃3', fileName: '率表.pdf' }]).length, 0)
+assert.equal(manutermRate(10, 'male', false, 35, 1), 0.99)
+assert.equal(manutermRate(10, 'female', false, 35, 1), 0.97)
+assert.equal(manutermRate(20, 'male', false, 35, 1), 1.53)
+assert.equal(manutermRate(10, 'male', false, 66, 1), null)
+const filled = premiumToFill({ age: 35, sex: 'male', smoker: false, plan: 10, gap: 1_000_000 })
+assert.equal(filled?.premium, 1170)
+assert.equal(filled?.band, 2)
+assert.equal(filled?.rate, 0.97)
+const minimum = premiumToFill({ age: 35, sex: 'male', smoker: false, plan: 10, gap: 100_000 })
+assert.equal(minimum?.sumAssured, 320_000)
+assert.equal(minimum?.premium, 800)
+assert.equal(minimum?.raisedToMinimumSum, true)
+const bought = coverForBudget({ age: 35, sex: 'male', smoker: false, plan: 10, budget: 1170 })
+assert.equal(bought?.sumAssured, 1_000_000)
+assert.equal(coverForBudget({ age: 35, sex: 'male', smoker: false, plan: 10, budget: 500 }), null)
+assert.equal(premiumToFill({ age: 35, sex: 'male', smoker: false, plan: 10, gap: 0 }), null)
 
 const client = validateClient({
   chineseName: '  陳大文 ',

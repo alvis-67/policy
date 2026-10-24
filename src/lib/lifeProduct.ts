@@ -31,7 +31,7 @@ function termReason(age: number | null) {
     : term10
       ? '這位客人只適用 10 年水平保費（投保年齡 16 至 65 歲），20 年計劃只到 55 歲。'
       : '未有出生日期，投保年齡要再核對：10 年計劃 16 至 65 歲，20 年計劃 16 至 55 歲。'
-  return `保障至 75 歲，首 10 年或 20 年保費維持不變，用來補港幣人壽缺口，保費通常低於終身計劃。${band}65 歲前可轉換為終身壽險。保費率表是港幣，按每 1,000 名義金額、性別、吸煙習慣和組別計算，系統未自動報價。`
+  return `保障至 75 歲，首 10 年或 20 年保費維持不變，用來補港幣人壽缺口，保費通常低於終身計劃。${band}65 歲前可轉換為終身壽險。港幣保費見上方估算，只計首段水平保費。`
 }
 
 export function suggestManulifeLife(input: { age: number | null; gap: number; coverPast75: boolean }) {
@@ -84,8 +84,8 @@ export function suggestManulifeLife(input: { age: number | null; gap: number; co
 
   const lead =
     age == null
-      ? '按港幣人壽缺口建議。未有出生日期，投保年齡和保費都要再核對。'
-      : '按港幣人壽缺口和照顧年期建議。保費仍要按年齡、性別、吸煙習慣和組別，打開保費率表核對。'
+      ? '按港幣人壽缺口建議。未有出生日期，投保年齡要再核對。精選定期壽險的港幣保費見上方。'
+      : '按港幣人壽缺口和照顧年期建議。精選定期壽險的港幣保費見上方。美元計劃不會兌換，也不會自動報價。'
 
   return { lead, picks }
 }

@@ -1456,6 +1456,60 @@ input[type='number'] {
   color: #1c1915;
 }
 
+.life-quote {
+  padding: 1rem 1.2rem 1.15rem;
+  background: #f3efe6;
+  color: #1c1915;
+  border-top: 1px solid rgba(20, 48, 44, 0.08);
+}
+
+.life-quote .dt {
+  color: #8a6432;
+}
+
+.life-quote .life-total {
+  font-size: 1.7rem;
+}
+
+.life-quote-choices {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+}
+
+.life-quote-choices button {
+  min-height: 2rem;
+  border: 1px solid rgba(20, 48, 44, 0.2);
+  border-radius: 999px;
+  background: transparent;
+  color: #1c1915;
+  padding: 0 0.75rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.life-quote-choices button.is-on {
+  border-color: #14302c;
+  background: #14302c;
+  color: #f7f4ee;
+}
+
+.life-quote-plan {
+  margin-top: 0.9rem;
+}
+
+.life-quote-name {
+  margin: 0;
+  font-weight: 700;
+}
+
+.life-quote-label {
+  margin: 0.35rem 0 0;
+  color: #8a6432;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+}
+
 .life-total {
   margin: 0.2rem 0 0.35rem;
   font-family: var(--font-serif);
