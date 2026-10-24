@@ -48,6 +48,10 @@ export function Layout() {
             <ListIcon />
             名稱管理
           </NavLink>
+          <NavLink to="/manulife" className={navClass}>
+            <FileIcon />
+            宏利產品
+          </NavLink>
           <p className="block sidebar-actions">
             <button type="button" onClick={() => void downloadBackup()}>
               下載備份
@@ -87,6 +91,15 @@ function GridIcon() {
       <rect x="9.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" />
       <rect x="1.5" y="9.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" />
       <rect x="9.5" y="9.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  )
+}
+
+function FileIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M3.5 2.2h5.2L12.6 6v7.6H3.5V2.2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M8.5 2.5V6h3.7" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
     </svg>
   )
 }

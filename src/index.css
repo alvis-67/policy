@@ -1308,6 +1308,43 @@ input[type='number'] {
   margin: 0.75rem 0.75rem 0;
 }
 
+.manulife-form {
+  padding: 1.1rem 1.2rem 1.2rem;
+}
+
+.manulife-form .actions {
+  margin-top: 1rem;
+}
+
+.manulife-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.manulife-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+}
+
+.manulife-row p {
+  margin: 0.2rem 0 0;
+}
+
+@media (max-width: 640px) {
+  .manulife-row {
+    display: block;
+  }
+
+  .manulife-row .inline-actions {
+    justify-content: flex-start;
+    margin-top: 0.65rem;
+  }
+}
+
 .sidebar-note button {
   border: none;
   background: none;

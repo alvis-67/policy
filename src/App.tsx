@@ -8,6 +8,7 @@ import { Clients } from './pages/Clients'
 import { Dashboard } from './pages/Dashboard'
 import { LifePlanDetail, LifePlans } from './pages/LifePlan'
 import { LifeReport } from './pages/LifeReport'
+import { ManulifeFiles } from './pages/ManulifeFiles'
 import { Retirement } from './pages/Retirement'
 import { Report } from './pages/Report'
 
@@ -23,6 +24,7 @@ export function App() {
           <Route path="clients" element={<Clients />} />
           <Route path="clients/:id" element={<ClientDetail />} />
           <Route path="catalog" element={<Catalog />} />
+          <Route path="manulife" element={<ManulifeFiles />} />
           <Route path="analysis" element={<Analysis />} />
           <Route path="analysis/:id" element={<AnalysisDetail />} />
           <Route path="finance" element={<LifePlans />} />

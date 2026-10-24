@@ -3,6 +3,7 @@ import { analyzeClient } from '../src/lib/analysis'
 import { calculateLifeNeed, supportYears, validateDraft } from '../src/lib/lifeNeed'
 import { assetSeries, calculateRetirement, retirementError, type RetirementInput } from '../src/lib/retirement'
 import { toAnnualPremium, toMonthlyPremium } from '../src/lib/format'
+import { manulifeFileError, storageFileName } from '../src/lib/manulifeFileRules'
 import { formatAmountInput } from '../src/lib/parse'
 import { summarizePolicies } from './stats'
 import { validateClient, validatePolicy } from './validate'
@@ -15,6 +16,9 @@ assert.equal(toMonthlyPremium(10000, 'yearly'), 833.33)
 assert.equal(formatAmountInput('1000000'), '1,000,000')
 assert.equal(formatAmountInput('1,000.50'), '1,000.50')
 assert.equal(formatAmountInput('1000.'), '1,000.')
+assert.equal(manulifeFileError('小冊子.pdf', 1200), null)
+assert.equal(manulifeFileError('保費.txt', 1200), '只可以上傳 PDF、圖片或試算表。')
+assert.equal(storageFileName('C:\\檔案\\盈傳 小冊子.pdf'), '盈傳_小冊子.pdf')
 
 const client = validateClient({
   chineseName: '  陳大文 ',
