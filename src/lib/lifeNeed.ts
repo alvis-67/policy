@@ -163,20 +163,21 @@ export function calculateLifeNeed(plan: LifePlanInput, policies: Policy[]): Life
     ...plan.members.map((member) => memberLine(member, share, 0, member.role === 'child' ? childUntil : parentUntil)),
     ...(plan.spouse ? [spouseLine(plan.spouse, 0)] : []),
   ]
-  const childTotal = roundMoney(sum(lines.filter((line) => line.role === 'child').map((line) => line.amount)))
-  const parentTotal = roundMoney(sum(lines.filter((line) => line.role === 'parent').map((line) => line.amount)))
-  const spouseTotal = roundMoney(sum(lines.filter((line) => line.role === 'spouse').map((line) => line.amount)))
-  const familyTotal = roundMoney(childTotal + parentTotal + spouseTotal)
-  const familyWithoutInflation = roundMoney(sum(flatLines.map((line) => line.amount)))
-  const debtTotal = roundMoney(sum(plan.debts.map((item) => item.amount)))
-  const funeralCost = roundMoney(Math.max(0, plan.funeralCost))
-  const grossNeed = roundMoney(familyTotal + debtTotal + funeralCost)
-  const assetTotal = roundMoney(sum(plan.assets.map((item) => item.amount)))
-  const reserveAmount = roundMoney(Math.max(0, plan.reserveAmount))
-  const deductibleAssets = roundMoney(Math.max(0, assetTotal - reserveAmount))
+  const childTotal = roundDollar(sum(lines.filter((line) => line.role === 'child').map((line) => line.amount)))
+  const parentTotal = roundDollar(sum(lines.filter((line) => line.role === 'parent').map((line) => line.amount)))
+  const spouseTotal = roundDollar(sum(lines.filter((line) => line.role === 'spouse').map((line) => line.amount)))
+  const familyTotal = childTotal + parentTotal + spouseTotal
+  const familyWithoutInflation = roundDollar(sum(flatLines.map((line) => line.amount)))
+  const debtTotal = roundDollar(sum(plan.debts.map((item) => item.amount)))
+  const funeralCost = roundDollar(Math.max(0, plan.funeralCost))
+  const grossNeed = familyTotal + debtTotal + funeralCost
+  const assetTotal = roundDollar(sum(plan.assets.map((item) => item.amount)))
+  const reserveAmount = roundDollar(Math.max(0, plan.reserveAmount))
+  const deductibleAssets = Math.max(0, assetTotal - reserveAmount)
   const life = existingLife(policies)
-  const gap = roundMoney(grossNeed - deductibleAssets - life.hkd)
-  const gapWithoutInflation = roundMoney(familyWithoutInflation + debtTotal + funeralCost - deductibleAssets - life.hkd)
+  const lifeHkd = roundDollar(life.hkd)
+  const gap = grossNeed - deductibleAssets - lifeHkd
+  const gapWithoutInflation = familyWithoutInflation + debtTotal + funeralCost - deductibleAssets - lifeHkd
   return {
     lines,
     childTotal,
@@ -189,7 +190,7 @@ export function calculateLifeNeed(plan: LifePlanInput, policies: Policy[]): Life
     reserveAmount,
     deductibleAssets,
     spouseTotal,
-    lifeHkd: life.hkd,
+    lifeHkd,
     lifeCount: life.count,
     foreignLife: life.foreign,
     gap,
@@ -314,9 +315,9 @@ function spouseLine(spouse: LifeSpouse, inflationRate: number): LifeSupportLine 
 
 function inflatedTotal(annual: number, years: number, rate: number) {
   if (years <= 0 || annual <= 0) return 0
-  if (rate <= 0) return roundMoney(annual * years)
+  if (rate <= 0) return roundDollar(annual * years)
   const growth = rate / 100
-  return roundMoney((annual * (Math.pow(1 + growth, years) - 1)) / growth)
+  return roundDollar((annual * (Math.pow(1 + growth, years) - 1)) / growth)
 }
 
 function existingLife(policies: Policy[]) {
@@ -398,6 +399,10 @@ function parseMoney(raw: string): number | null | 'invalid' {
   const value = Number(text)
   if (!Number.isFinite(value) || value < 0 || value > 1_000_000_000_000) return 'invalid'
   return roundMoney(value)
+}
+
+function roundDollar(amount: number) {
+  return Math.sign(amount) * Math.round(Math.abs(amount))
 }
 
 function sum(values: number[]) {

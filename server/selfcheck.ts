@@ -295,7 +295,25 @@ const inflated = calculateLifeNeed(
   [],
 )
 const inflatedFactor = (Math.pow(1.03, 22) - 1) / 0.03
-assert.equal(inflated.childTotal, Math.round(120000 * inflatedFactor * 100) / 100)
+assert.equal(inflated.childTotal, Math.round(120000 * inflatedFactor))
+const roundedNeed = calculateLifeNeed(
+  {
+    funeralCost: 1000.5,
+    siblingCount: 1,
+    inflationRate: 0,
+    childUntil: 22,
+    parentUntil: 88,
+    reserveAmount: 0,
+    spouse: null,
+    members: [],
+    debts: [{ id: 'loan', name: '貸款', amount: 1000.4 }],
+    assets: [],
+  },
+  [],
+)
+assert.equal(roundedNeed.funeralCost, 1001)
+assert.equal(roundedNeed.debtTotal, 1000)
+assert.equal(roundedNeed.gap, 2001)
 assert.ok(inflated.gap > inflated.gapWithoutInflation)
 assert.equal(inflated.gapWithoutInflation, 2640000)
 
