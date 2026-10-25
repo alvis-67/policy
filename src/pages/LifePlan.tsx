@@ -601,17 +601,27 @@ function NeedResult({
         </div>
       </div>
       <div className="life-result-body">
-        <dl className="analysis-facts">
-          <Fact label="子女照顧" value={formatNeed(result.childTotal)} />
-          <Fact label="父母照顧" value={formatNeed(result.parentTotal)} />
-          <Fact label="配偶生活" value={formatNeed(result.spouseTotal)} />
-          <Fact label="債務" value={formatNeed(result.debtTotal)} />
-          <Fact label="身後費用" value={formatNeed(result.funeralCost)} />
-          <Fact label="需要合計" value={formatNeed(result.grossNeed)} />
-          <Fact label="現有資金" value={formatNeed(result.assetTotal)} />
-          <Fact label="保留應急" value={formatNeed(result.reserveAmount)} />
-          <Fact label="現有人壽" value={`${formatNeed(result.lifeHkd)} · ${result.lifeCount} 張`} />
-        </dl>
+        <div className="life-formula">
+          <FormulaLine label="子女照顧" value={formatNeed(result.childTotal)} />
+          <FormulaOp sign="+" />
+          <FormulaLine label="父母照顧" value={formatNeed(result.parentTotal)} />
+          <FormulaOp sign="+" />
+          <FormulaLine label="配偶生活" value={formatNeed(result.spouseTotal)} />
+          <FormulaOp sign="+" />
+          <FormulaLine label="債務" value={formatNeed(result.debtTotal)} />
+          <FormulaOp sign="+" />
+          <FormulaLine label="身後費用" value={formatNeed(result.funeralCost)} />
+          <FormulaOp sign="=" />
+          <FormulaLine label="需要合計" value={formatNeed(result.grossNeed)} total />
+          <FormulaOp sign="−" />
+          <FormulaLine label="現有資金" value={formatNeed(result.assetTotal)} />
+          <FormulaOp sign="+" />
+          <FormulaLine label="保留應急" value={formatNeed(result.reserveAmount)} note="留在家裡，所以加回" />
+          <FormulaOp sign="−" />
+          <FormulaLine label="現有人壽" value={`${formatNeed(result.lifeHkd)} · ${result.lifeCount} 張`} />
+          <FormulaOp sign="=" />
+          <FormulaLine label="尚欠人壽保障" value={formatNeed(result.gap)} total />
+        </div>
         {result.foreignLife ? <p className="hint">另有{result.foreignLife}人壽，沒有兌換，亦沒有從港幣差額扣除。</p> : null}
       </div>
       <TermEstimate
@@ -655,13 +665,20 @@ function useAnimatedAmount(value: number) {
   return shown
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+function FormulaLine({ label, value, total, note }: { label: string; value: string; total?: boolean; note?: string }) {
   return (
-    <div>
-      <dt>{label}</dt>
-      <dd>{value}</dd>
-    </div>
+    <p className={total ? 'is-total' : undefined}>
+      <span>{label}</span>
+      <span>
+        {value}
+        {note ? <small>{note}</small> : null}
+      </span>
+    </p>
   )
+}
+
+function FormulaOp({ sign }: { sign: string }) {
+  return <p className="life-formula-op">{sign}</p>
 }
 
 function ManulifePicks({

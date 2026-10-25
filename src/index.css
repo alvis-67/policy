@@ -1456,6 +1456,39 @@ input[type='number'] {
   color: #1c1915;
 }
 
+.life-formula {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.life-formula p {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.life-formula p span:last-child {
+  text-align: right;
+}
+
+.life-formula small {
+  display: block;
+  color: #8a6432;
+  font-size: 0.75rem;
+}
+
+.life-formula .is-total {
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(20, 48, 44, 0.16);
+  font-weight: 700;
+}
+
+.life-formula-op {
+  color: #8a6432;
+  font-weight: 700;
+}
+
 .life-quote {
   padding: 1rem 1.2rem 1.15rem;
   background: #f3efe6;
