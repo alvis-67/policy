@@ -6,7 +6,6 @@ import { displayName, formatCover, formatDate, formatMoney, formatPhone, moneyPa
 import {
   POLICY_STATUSES,
   POLICY_TYPES,
-  PREMIUM_FREQUENCIES,
   PRIMARY_COVER_TYPES,
   ROOM_LEVELS,
   countsAsCover,
@@ -206,7 +205,5 @@ function coverLine(policy: Policy) {
 }
 
 function premiumLine(policy: Policy) {
-  const amount = `${formatMoney(policy.premiumAmount, policy.currency)} ${labelOf(PREMIUM_FREQUENCIES, policy.premiumFrequency)}`
-  if (policy.premiumFrequency !== 'monthly') return amount
-  return `${amount}（每年 ${formatMoney(toAnnualPremium(policy.premiumAmount, 'monthly'), policy.currency)}）`
+  return `${formatMoney(toAnnualPremium(policy.premiumAmount, policy.premiumFrequency), policy.currency)} 每年`
 }
