@@ -721,7 +721,15 @@ span.catalog-pick {
 }
 
 .report-policy {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 297mm;
   padding-top: 8mm;
+}
+
+.report-policy .report-foot {
+  margin-top: auto;
 }
 
 .report-policy .report-mast {
@@ -935,6 +943,10 @@ span.catalog-pick {
     margin: 0;
     padding: 0;
     box-shadow: none;
+  }
+
+  .report-policy {
+    min-height: 270mm;
   }
 
   .report-row,
