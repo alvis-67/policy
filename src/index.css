@@ -725,7 +725,7 @@ span.catalog-pick {
   flex-direction: column;
   box-sizing: border-box;
   min-height: 297mm;
-  padding-top: 8mm;
+  padding-top: 11mm;
 }
 
 .report-policy .report-foot {
@@ -733,12 +733,12 @@ span.catalog-pick {
 }
 
 .report-policy .report-mast {
-  padding-bottom: 0.4rem;
+  padding-bottom: 0.75rem;
 }
 
 .report-policy .report-mast-row {
   align-items: baseline;
-  padding-top: 0;
+  padding-top: 0.45rem;
 }
 
 .report-policy .report-mast-title {
@@ -766,8 +766,8 @@ span.catalog-pick {
 }
 
 .report-policy .report-person {
-  margin-top: 0.4rem;
-  font-size: 1.4rem;
+  margin-top: 0.75rem;
+  font-size: 1.6rem;
 }
 
 .report-policy .report-person-en {
@@ -776,29 +776,29 @@ span.catalog-pick {
 }
 
 .report-policy .report-contact-line {
-  margin-top: 0.12rem;
+  margin-top: 0.35rem;
 }
 
 .report-policy .report-overview {
-  margin-top: 0.45rem;
+  margin-top: 0.85rem;
 }
 
 .report-policy .report-cover-grid div {
-  padding-top: 0.15rem;
+  padding-top: 0.35rem;
 }
 
 .report-policy .report-cover-grid strong {
-  margin-top: 0.05rem;
-  font-size: 1.05rem;
+  margin-top: 0.15rem;
+  font-size: 1.16rem;
 }
 
 .report-policy .report-premium-line {
-  margin-top: 0.35rem;
-  padding-top: 0.28rem;
+  margin-top: 0.55rem;
+  padding-top: 0.4rem;
 }
 
 .report-policy h2 {
-  margin-top: 0.7rem;
+  margin-top: 0.95rem;
 }
 
 .report-list {
