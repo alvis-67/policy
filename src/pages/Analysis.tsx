@@ -162,9 +162,14 @@ export function AnalysisDetail() {
         title={client.chineseName.trim() || client.englishName.trim() || '未命名客戶'}
         description={client.chineseName.trim() && client.englishName.trim() ? client.englishName.trim() : undefined}
         action={
-          <Link className="btn btn-ghost" to={`/clients/${client.id}`}>
-            查看保單
-          </Link>
+          <div className="actions">
+            <Link className="btn btn-primary" to={`/analysis/${client.id}/statement`}>
+              保障現況說明
+            </Link>
+            <Link className="btn btn-ghost" to={`/clients/${client.id}`}>
+              查看保單
+            </Link>
+          </div>
         }
       />
       <p className="subline">

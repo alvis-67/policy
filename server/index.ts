@@ -72,7 +72,7 @@ function matchesQuery(client: Client, policies: Policy[], query: string) {
     client.hkid,
     client.occupation,
     client.notes,
-    ...policies.flatMap((policy) => [policy.insurer, policy.policyName, policy.policyNumber, policy.notes]),
+    ...policies.flatMap((policy) => [policy.insurer, policy.policyName, policy.policyNumber, policy.notes, policy.clientNotes, policy.ownerName, policy.beneficiary]),
   ]
     .join(' ')
     .toLowerCase()

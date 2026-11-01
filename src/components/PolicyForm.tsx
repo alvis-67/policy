@@ -34,8 +34,12 @@ interface PolicyFormState {
   premiumAmount: string
   premiumFrequency: string
   premiumTerm: string
+  ownerName: string
+  beneficiary: string
+  premiumUntil: string
   status: string
   notes: string
+  clientNotes: string
 }
 
 function unique(values: Array<string | undefined>) {
@@ -67,8 +71,12 @@ function emptyState(): PolicyFormState {
     premiumAmount: '',
     premiumFrequency: 'monthly',
     premiumTerm: '',
+    ownerName: '',
+    beneficiary: '',
+    premiumUntil: '',
     status: 'inforce',
     notes: '',
+    clientNotes: '',
   }
 }
 
@@ -89,8 +97,12 @@ function fromPolicy(policy: Policy): PolicyFormState {
     premiumAmount: formatAmountInput(String(policy.premiumAmount)),
     premiumFrequency: policy.premiumFrequency,
     premiumTerm: policy.premiumTerm,
+    ownerName: policy.ownerName,
+    beneficiary: policy.beneficiary,
+    premiumUntil: policy.premiumUntil,
     status: policy.status,
     notes: policy.notes,
+    clientNotes: policy.clientNotes,
   }
 }
 
@@ -280,8 +292,12 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
       premiumAmount,
       premiumFrequency,
       premiumTerm: form.premiumTerm.trim(),
+      ownerName: form.ownerName.trim(),
+      beneficiary: form.beneficiary.trim(),
+      premiumUntil: form.premiumUntil,
       status,
       notes: form.notes.trim(),
+      clientNotes: form.clientNotes.trim(),
     }
 
     lock.current = true
@@ -437,8 +453,17 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
             <input id="sumAssured" name="sumAssured" inputMode="decimal" value={form.sumAssured} onChange={onChange} placeholder="1,000,000" />
           </Field>
         )}
-        <Field label="供款年期" htmlFor="premiumTerm" hint="選填，例如 20年 或 至65歲">
+        <Field label="供款年期" htmlFor="premiumTerm" hint="選填，例如 20年 或 至65歲。不會用來推算供完日期。">
           <input id="premiumTerm" name="premiumTerm" value={form.premiumTerm} onChange={onChange} />
+        </Field>
+        <Field label="保單持有人" htmlFor="ownerName" hint="留空代表這位客戶本人。">
+          <input id="ownerName" name="ownerName" value={form.ownerName} onChange={onChange} />
+        </Field>
+        <Field label="受益人" htmlFor="beneficiary" hint="按合約填寫。留空就不會印進報告書。">
+          <input id="beneficiary" name="beneficiary" value={form.beneficiary} onChange={onChange} />
+        </Field>
+        <Field label="供款至" htmlFor="premiumUntil" hint="按合約填寫日期。留空就不會印進報告書。">
+          <input id="premiumUntil" name="premiumUntil" type="date" value={form.premiumUntil} onChange={onChange} />
         </Field>
         <div className="span-2">
           <Field label="保費" htmlFor="premiumAmount" required>
@@ -464,7 +489,12 @@ export function PolicyForm({ initial, onSubmit }: { initial?: Policy | null; onS
           {equivalent ? <p className="hint block">{equivalent}</p> : null}
         </div>
         <div className="span-2">
-          <Field label="備註" htmlFor="policyNotes">
+          <Field label="客戶可見備註" htmlFor="clientNotes" hint="會印在保單報告書。">
+            <textarea id="clientNotes" name="clientNotes" value={form.clientNotes} onChange={onChange} />
+          </Field>
+        </div>
+        <div className="span-2">
+          <Field label="內部備註" htmlFor="policyNotes" hint="只留在客戶頁，不會印進報告書。">
             <textarea id="policyNotes" name="notes" value={form.notes} onChange={onChange} />
           </Field>
         </div>

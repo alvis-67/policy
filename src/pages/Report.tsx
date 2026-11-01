@@ -78,6 +78,7 @@ export function Report() {
       {!loading && !error && client && totals ? (
         <article className="report-sheet">
           <header className="report-mast">
+            <p className="report-brand">保冊</p>
             <div className="report-mast-row">
               <p className="report-kicker">Policy Statement</p>
               <p className="report-date">
@@ -165,7 +166,8 @@ function PolicyGroups({ title, policies, empty, note }: { title: string; policie
                   <strong>{policy.insurer}</strong> {policy.policyName}
                 </p>
                 <p className="report-meta">{policyMeta(policy)}</p>
-                {policy.notes.trim() ? <p className="report-meta">{policy.notes}</p> : null}
+                <p className="report-meta">{controlLine(policy)}</p>
+                {policy.clientNotes.trim() ? <p className="report-meta">{policy.clientNotes}</p> : null}
               </div>
               <span>{coverLine(policy)}</span>
               <span>{premiumLine(policy)}</span>
@@ -175,6 +177,13 @@ function PolicyGroups({ title, policies, empty, note }: { title: string; policie
       ) : null}
     </section>
   )
+}
+
+function controlLine(policy: Policy) {
+  const parts = [`持有人 ${policy.ownerName.trim() || '客戶本人'}`]
+  if (policy.beneficiary.trim()) parts.push(`受益人 ${policy.beneficiary.trim()}`)
+  if (policy.premiumUntil) parts.push(`供款至 ${formatDate(policy.premiumUntil)}`)
+  return parts.join(' · ')
 }
 
 function policyMeta(policy: Policy) {

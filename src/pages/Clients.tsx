@@ -118,8 +118,8 @@ export function Clients() {
                 <th>客戶</th>
                 <th>電話</th>
                 <th>年齡</th>
-                <th>保單</th>
-                <th>每年保費</th>
+                <th className="right">保單</th>
+                <th className="right">每年保費</th>
                 <th>更新</th>
               </tr>
             </thead>
@@ -141,13 +141,13 @@ export function Clients() {
                     </td>
                     <td className="num">{formatPhone(client.phone)}</td>
                     <td>{age == null ? <span className="muted">—</span> : `${age}歲`}</td>
-                    <td>
+                    <td className="right">
                       <div className="num">{client.policyCount}</div>
                       {client.policyCount !== client.activeCount ? (
                         <div className="subline">{client.activeCount} 張計入保障</div>
                       ) : null}
                     </td>
-                    <td>
+                    <td className="right">
                       <MoneyText bag={client.annualPremium} empty="—" />
                     </td>
                     <td>{formatDate(client.updatedAt)}</td>

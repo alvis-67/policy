@@ -11,6 +11,8 @@ import {
   PREMIUM_FREQUENCIES,
   ROOM_LEVELS,
 } from './lib/labels'
+import { parseQuoteSlip, type SavedQuote } from './lib/quoteSlip'
+import type { UsdTerm } from './lib/usdQuote'
 import type { Client, ClientDetailResponse, ClientListItem, ClientWrite, Policy, PolicyWrite, Summary } from './types'
 
 export interface SavedLifePlan extends LifePlanInput {
@@ -53,6 +55,10 @@ interface PolicyRow {
   premium_amount: number | string
   premium_frequency: string
   premium_term: string
+  owner_name?: string
+  beneficiary?: string
+  premium_until?: string | null
+  client_notes?: string
   status: string
   notes: string
   created_at: string
@@ -120,8 +126,12 @@ function mapPolicy(row: PolicyRow): Policy {
     premiumAmount: requiredNumber(row.premium_amount),
     premiumFrequency: requiredEnum(row.premium_frequency, PREMIUM_FREQUENCIES, 'yearly'),
     premiumTerm: row.premium_term,
+    ownerName: row.owner_name ?? '',
+    beneficiary: row.beneficiary ?? '',
+    premiumUntil: row.premium_until ?? '',
     status: requiredEnum(row.status, POLICY_STATUSES, 'inforce'),
     notes: row.notes,
+    clientNotes: row.client_notes ?? '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -133,6 +143,9 @@ function fail(error: { message: string; code?: string } | null, fallback = '系�
   const message = (error?.message ?? '').toLowerCase()
   if (/room_level|deductible|full_cover|sum_assured/.test(message)) {
     throw new Error('醫療欄位尚未建立。請到 Supabase SQL Editor 執行 supabase/medical.sql，然後再儲存。')
+  }
+  if (/owner_name|beneficiary|premium_until|client_notes|life_quotes/.test(message)) {
+    throw new Error('會面欄位尚未建立。請到 Supabase SQL Editor 執行 supabase/meeting.sql，然後再儲存。')
   }
   if (message.includes('life_plans')) {
     throw new Error('理財分析尚未建立。請到 Supabase SQL Editor 執行 supabase/life.sql，然後再儲存。')
@@ -182,7 +195,7 @@ function matchesQuery(client: Client, policies: Policy[], query: string) {
     client.hkid,
     client.occupation,
     client.notes,
-    ...policies.flatMap((policy) => [policy.insurer, policy.policyName, policy.policyNumber, policy.notes]),
+    ...policies.flatMap((policy) => [policy.insurer, policy.policyName, policy.policyNumber, policy.notes, policy.clientNotes, policy.ownerName, policy.beneficiary]),
   ]
     .join(' ')
     .toLowerCase()
@@ -223,8 +236,12 @@ function policyPayload(input: PolicyWrite, clientId?: string) {
     premium_amount: input.premiumAmount,
     premium_frequency: input.premiumFrequency,
     premium_term: input.premiumTerm,
+    owner_name: input.ownerName,
+    beneficiary: input.beneficiary,
+    premium_until: input.premiumUntil || null,
     status: input.status,
     notes: input.notes,
+    client_notes: input.clientNotes,
   }
 }
 
@@ -366,7 +383,42 @@ export const api = {
     }
     return choices
   },
+
+  async lifeQuote(clientId: string): Promise<{ ready: boolean; quote: SavedQuote | null }> {
+    const result = await supabase.from('life_quotes').select('*').eq('client_id', clientId).maybeSingle()
+    if (result.error) {
+      if (missingQuoteTable(result.error)) return { ready: false, quote: null }
+      fail(result.error, '讀取估算單失敗，請再試一次。')
+    }
+    return { ready: true, quote: result.data ? mapLifeQuote(result.data as LifeQuoteRow) : null }
+  },
+
+  async saveLifeQuote(clientId: string, input: QuoteWrite): Promise<SavedQuote> {
+    const slip = parseQuoteSlip(input.slip)
+    if (!slip) throw new Error('這條估算未能儲存，請再選一次。')
+    const result = await supabase
+      .from('life_quotes')
+      .upsert(
+        {
+          client_id: clientId,
+          smoker: input.smoker,
+          pay_term: String(input.payTerm),
+          annual_budget: input.annualBudget,
+          hkd_gap: input.hkdGap,
+          age: input.age,
+          sex: input.sex,
+          slip,
+        },
+        { onConflict: 'client_id' },
+      )
+      .select('*')
+      .single()
+    if (result.error || !result.data) fail(result.error, '儲存估算單失敗，請再試一次。')
+    return mapLifeQuote(result.data as LifeQuoteRow)
+  },
 }
+
+export type QuoteWrite = Omit<SavedQuote, 'clientId' | 'updatedAt'>
 
 interface LifePlanRow {
   client_id: string
@@ -388,6 +440,45 @@ interface LifePlanRow {
 function missingLifeTable(error: { message?: string; code?: string }) {
   const message = (error.message ?? '').toLowerCase()
   return error.code === 'PGRST205' || error.code === '42P01' || message.includes('life_plans')
+}
+
+interface LifeQuoteRow {
+  client_id: string
+  smoker: boolean
+  pay_term: string
+  annual_budget: number | string | null
+  hkd_gap: number | string | null
+  age: number | string | null
+  sex: string
+  slip: unknown
+  updated_at: string
+}
+
+function missingQuoteTable(error: { message?: string; code?: string }) {
+  const message = (error.message ?? '').toLowerCase()
+  return error.code === 'PGRST205' || error.code === '42P01' || message.includes('life_quotes')
+}
+
+function mapLifeQuote(row: LifeQuoteRow): SavedQuote {
+  const slip = parseQuoteSlip(row.slip)
+  if (!slip) throw new Error('已儲存的估算單未能讀取，請再選一條。')
+  return {
+    clientId: row.client_id,
+    smoker: row.smoker === true,
+    payTerm: parsePayTerm(row.pay_term),
+    annualBudget: optionalNumber(row.annual_budget),
+    hkdGap: Math.max(0, optionalNumber(row.hkd_gap) ?? 0),
+    age: optionalNumber(row.age),
+    sex: row.sex === 'male' || row.sex === 'female' ? row.sex : '',
+    slip,
+    updatedAt: row.updated_at,
+  }
+}
+
+function parsePayTerm(value: string): UsdTerm {
+  if (value === '5' || value === '10' || value === '20' || value === '25') return Number(value) as UsdTerm
+  if (value === 'single') return 'single'
+  return 10
 }
 
 function mapLifePlan(row: LifePlanRow): SavedLifePlan {

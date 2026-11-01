@@ -84,6 +84,7 @@ export function LifeReport() {
       {!loading && !error && client ? (
         <article className="report-sheet">
           <header className="report-mast">
+            <p className="report-brand">保冊</p>
             <div className="report-mast-row">
               <p className="report-kicker">Life Needs Analysis</p>
               <p className="report-date">
@@ -135,14 +136,14 @@ export function LifeReport() {
             <section>
               <h2>家庭負擔</h2>
               <div className="report-list">
-                <div className="report-row report-row-head">
+                <div className="report-row report-row-head report-family">
                   <span>對象</span>
                   <span>照顧</span>
                   <span>每月</span>
                   <span>金額</span>
                 </div>
                 {result.lines.map((line) => (
-                  <div key={line.id} className="report-row">
+                  <div key={line.id} className="report-row report-family">
                     <span>
                     {line.role === 'child' ? '子女' : line.role === 'parent' ? '父母' : '配偶'}
                     {line.role === 'spouse' ? '' : line.name ? ` ${line.name}` : ''}

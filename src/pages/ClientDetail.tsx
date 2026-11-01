@@ -136,7 +136,7 @@ export function ClientDetail() {
       <Link className="back-link" to="/clients">
         ← 客戶
       </Link>
-      <div className="row-between">
+      <div className="row-between client-head">
         <div className="row">
           <span className="avatar">{nameInitial(client)}</span>
           <div>
@@ -271,9 +271,9 @@ export function ClientDetail() {
                   <th>保險公司</th>
                   <th>保單</th>
                   <th>類別</th>
-                  <th>保障</th>
+                  <th className="right">保障</th>
                   <th>簽發日期</th>
-                  <th>保費</th>
+                  <th className="right">保費</th>
                   <th>狀態</th>
                   <th className="right"> </th>
                 </tr>
@@ -281,17 +281,27 @@ export function ClientDetail() {
               <tbody>
                 {data.policies.map((policy) => {
                   const meta = [policy.policyNumber, policy.premiumTerm].filter(Boolean).join(' · ')
+                  const control = [
+                    policy.ownerName.trim() ? `持有人 ${policy.ownerName.trim()}` : '',
+                    policy.beneficiary.trim() ? `受益人 ${policy.beneficiary.trim()}` : '',
+                    policy.premiumUntil ? `供款至 ${formatDate(policy.premiumUntil)}` : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')
                   return (
                     <tr key={policy.id}>
                       <td>{policy.insurer}</td>
                       <td>
                         <div>{policy.policyName}</div>
                         {meta ? <div className="subline">{meta}</div> : null}
+                        {control ? <div className="subline">{control}</div> : null}
+                        {policy.clientNotes.trim() ? <div className="subline">給客人：{policy.clientNotes.trim()}</div> : null}
+                        {policy.notes.trim() ? <div className="subline">內部：{policy.notes.trim()}</div> : null}
                       </td>
                       <td>{labelOf(POLICY_TYPES, policy.policyType)}</td>
-                      <td className="num">{formatCover(policy)}</td>
+                      <td className="num right">{formatCover(policy)}</td>
                       <td>{formatDate(policy.issueDate)}</td>
-                      <td>
+                      <td className="right">
                         <div className="num">{formatMoney(policy.premiumAmount, policy.currency)}</div>
                         <div className="subline">
                           {labelOf(PREMIUM_FREQUENCIES, policy.premiumFrequency)}

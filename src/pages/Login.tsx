@@ -50,6 +50,13 @@ export function Login() {
 
   return (
     <div className="login-screen">
+      <aside className="login-aside">
+        <span className="brand-mark">保</span>
+        <div>
+          <p className="login-word">保冊</p>
+          <p className="login-aside-note">保單管理</p>
+        </div>
+      </aside>
       <form className="login-card stack" onSubmit={onSubmit}>
         <div className="row">
           <span className="brand-mark">保</span>
@@ -60,7 +67,7 @@ export function Login() {
         </div>
         <div>
           <h1 className="page-title">{mode === 'sign-in' ? '登入' : '建立帳號'}</h1>
-          <p className="lede">只有已登入的帳號可以查看同編輯客戶保單。</p>
+          <p className="lede">只有已登入的帳號可以查看和編輯客戶保單。</p>
         </div>
         {error ? (
           <div className="error-banner" role="alert">

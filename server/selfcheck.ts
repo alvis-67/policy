@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import { analyzeClient } from '../src/lib/analysis'
+import { buildCoverStatement } from '../src/lib/coverStatement'
+import { parseQuoteSlip, quoteSlipView, type SavedQuote } from '../src/lib/quoteSlip'
 import { calculateLifeNeed, supportYears, validateDraft } from '../src/lib/lifeNeed'
 import { assetSeries, calculateRetirement, retirementError, type RetirementInput } from '../src/lib/retirement'
 import { toAnnualPremium, toMonthlyPremium } from '../src/lib/format'
@@ -376,7 +378,79 @@ assert.equal(surplus.gap, 0)
 assert.ok(surplus.surplus > 0)
 assert.equal(retirementError(retirementCaseInput({ retireAge: 50, currentAge: 60 })), '目標退休年齡須為 50 至 75 歲，而且不可小於現時年齡。')
 
+const controlled = validatePolicy({
+  insurer: '宏利 Manulife',
+  policyName: '精選定期壽險',
+  policyNumber: 'L1',
+  policyType: 'life',
+  currency: 'HKD',
+  sumAssured: 1000000,
+  issueDate: '2020-05-01',
+  premiumAmount: 1000,
+  premiumFrequency: 'yearly',
+  premiumTerm: '20年',
+  ownerName: ' 陳太 ',
+  beneficiary: '兒子',
+  premiumUntil: '2040-01-01',
+  status: 'inforce',
+  notes: '內部跟進',
+  clientNotes: '給客人看',
+})
+assert.equal(controlled.ownerName, '陳太')
+assert.equal(controlled.premiumUntil, '2040-01-01')
+assert.equal(controlled.clientNotes, '給客人看')
+assert.throws(() => validatePolicy({ ...controlled, premiumUntil: '20年' }))
+
+const statement = buildCoverStatement(sampleClient({}), [
+  policy('life-hkd', controlled),
+  policy('life-usd', { ...controlled, currency: 'USD', sumAssured: 50000, policyNumber: 'U' }),
+  policy('med', {
+    ...controlled,
+    policyType: 'medical',
+    sumAssured: null,
+    roomLevel: 'semi',
+    deductible: 0,
+    fullCover: false,
+    premiumAmount: 0,
+    policyNumber: 'M',
+  }),
+])
+const statementText = JSON.stringify(statement)
+assert.equal(/足夠|不足|可提升/.test(statementText), false)
+assert.notEqual(statement.blocks[0].foreignNote, '')
+assert.equal(statement.medical[0].detail.includes('非全包'), true)
+
+const slip = parseQuoteSlip({
+  kind: 'term',
+  purpose: 'fill',
+  plan: 20,
+  sumAssured: 1840000,
+  premium: 2849.6,
+  raisedToMinimumSum: false,
+  raisedToMinimumPremium: false,
+})
+assert.ok(slip && slip.kind === 'term')
+const quoteText = quotePlain({
+  clientId: 'c',
+  smoker: false,
+  payTerm: 20,
+  annualBudget: 30000,
+  hkdGap: 3120000,
+  age: 35,
+  sex: 'male',
+  slip: slip!,
+  updatedAt: '2026-11-02',
+})
+assert.equal(/足夠|不足|可提升|卓越|首選/.test(quoteText), false)
+assert.match(quoteText, /2024 年 1 月/)
+assert.equal(parseQuoteSlip({ kind: 'whole', product: 'youyue' }), null)
+
 console.log('selfcheck ok')
+
+function quotePlain(quote: SavedQuote) {
+  const view = quoteSlipView(quote)
+  return `${view.title}\n${view.rows.map((row) => `${row.label} ${row.value}`).join('\n')}\n${view.notes.join('\n')}`
+}
 
 function sampleClient(patch: Partial<Client>): Client {
   return {

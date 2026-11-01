@@ -46,8 +46,12 @@ export interface Policy {
   premiumAmount: number
   premiumFrequency: PremiumFrequency
   premiumTerm: string
+  ownerName: string
+  beneficiary: string
+  premiumUntil: string
   status: PolicyStatus
   notes: string
+  clientNotes: string
   createdAt: string
   updatedAt: string
 }

@@ -105,7 +105,9 @@ export function Dashboard() {
                         </span>
                       </span>
                     </span>
-                    <MoneyText bag={client.annualPremium} empty="未有保費" />
+                    <span className="list-money">
+                      <MoneyText bag={client.annualPremium} empty="未有保費" />
+                    </span>
                   </Link>
                 ))}
               </div>
@@ -119,9 +121,9 @@ export function Dashboard() {
                   <thead>
                     <tr>
                       <th>類別</th>
-                      <th>張數</th>
-                      <th>保障額</th>
-                      <th>每年保費</th>
+                      <th className="right">張數</th>
+                      <th className="right">保障額</th>
+                      <th className="right">每年保費</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -130,11 +132,11 @@ export function Dashboard() {
                       return (
                         <tr key={type.value}>
                           <td>{labelOf(POLICY_TYPES, type.value)}</td>
-                          <td className="num">{stat.count}</td>
-                          <td>
+                          <td className="num right">{stat.count}</td>
+                          <td className="right">
                             <MoneyText bag={stat.sumAssured} empty={type.value === 'medical' ? '按病房' : '—'} />
                           </td>
-                          <td>
+                          <td className="right">
                             <MoneyText bag={stat.annualPremium} empty="—" />
                           </td>
                         </tr>

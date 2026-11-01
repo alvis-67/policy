@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, errorMessage, type SavedLifePlan } from '../api'
+import { type QuoteSlip } from '../lib/quoteSlip'
 import { EmptyState } from '../components/EmptyState'
 import { Field } from '../components/Field'
 import { PageHeader } from '../components/PageHeader'
@@ -125,6 +126,8 @@ export function LifePlanDetail() {
   const [smoker, setSmoker] = useState(false)
   const [budget, setBudget] = useState('')
   const [payTerm, setPayTerm] = useState<UsdTerm>(10)
+  const [quoteSaved, setQuoteSaved] = useState(false)
+  const [pinning, setPinning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -134,14 +137,20 @@ export function LifePlanDetail() {
   useEffect(() => {
     let cancel = false
     setLoading(true)
-    Promise.all([api.client(id), api.lifePlan(id)])
-      .then(([detail, savedPlan]) => {
+    Promise.all([api.client(id), api.lifePlan(id), api.lifeQuote(id)])
+      .then(([detail, savedPlan, savedQuote]) => {
         if (cancel) return
         setClient(detail.client)
         setPolicies(detail.policies)
         setDraft(savedPlan.plan ? draftFromPlan(savedPlan.plan) : emptyDraft())
         setReady(savedPlan.ready)
         setSaved(savedPlan.plan != null)
+        if (savedQuote.quote) {
+          setSmoker(savedQuote.quote.smoker)
+          setPayTerm(savedQuote.quote.payTerm)
+          setBudget(savedQuote.quote.annualBudget == null ? '' : formatAmountInput(String(savedQuote.quote.annualBudget)))
+          setQuoteSaved(true)
+        }
         setDirty(false)
         setLoading(false)
       })
@@ -220,7 +229,31 @@ export function LifePlanDetail() {
   if (!client) return null
 
   const age = client.dateOfBirth ? calcAge(client.dateOfBirth) : null
+  const sex = client.gender === 'male' || client.gender === 'female' ? client.gender : ''
   const annual = client.monthlyIncome == null ? null : client.monthlyIncome * 12
+  const currentClient = client
+
+  async function pin(slip: QuoteSlip) {
+    const parsedBudget = parseOptionalNumber(budget)
+    setPinning(true)
+    try {
+      await api.saveLifeQuote(currentClient.id, {
+        smoker,
+        payTerm,
+        annualBudget: typeof parsedBudget === 'number' ? parsedBudget : null,
+        hkdGap: Math.max(0, result.gap),
+        age,
+        sex,
+        slip,
+      })
+      setQuoteSaved(true)
+      setError(null)
+    } catch (reason) {
+      setError(errorMessage(reason))
+    } finally {
+      setPinning(false)
+    }
+  }
   const children = draft.members.filter((member) => member.role === 'child')
   const parents = draft.members.filter((member) => member.role === 'parent')
 
@@ -237,6 +270,11 @@ export function LifePlanDetail() {
             <Link className="btn btn-ghost" to={`/clients/${client.id}`}>
               查看保單
             </Link>
+            {quoteSaved ? (
+              <Link className="btn btn-ghost" to={`/finance/${client.id}/quote`}>
+                估算單
+              </Link>
+            ) : null}
             {dirty ? (
               <button type="button" className="btn btn-primary" onClick={() => setError('請先儲存分析，報告會用已儲存的內容。')}>
                 匯出報告
@@ -415,6 +453,10 @@ export function LifePlanDetail() {
           onBudget={setBudget}
           payTerm={payTerm}
           onPayTerm={setPayTerm}
+          onPin={(slip) => void pin(slip)}
+          pinning={pinning}
+          quoteSaved={quoteSaved}
+          clientId={client.id}
         />
       </div>
       <ManulifePicks
@@ -555,6 +597,10 @@ function NeedResult({
   onBudget,
   payTerm,
   onPayTerm,
+  onPin,
+  pinning,
+  quoteSaved,
+  clientId,
 }: {
   result: LifeNeedResult
   started: boolean
@@ -568,6 +614,10 @@ function NeedResult({
   onBudget: (budget: string) => void
   payTerm: UsdTerm
   onPayTerm: (term: UsdTerm) => void
+  onPin: (slip: QuoteSlip) => void
+  pinning: boolean
+  quoteSaved: boolean
+  clientId: string
 }) {
   const shortfall = Math.max(0, result.gap)
   const shown = useAnimatedAmount(shortfall)
@@ -620,7 +670,7 @@ function NeedResult({
           <FormulaOp sign="−" />
           <FormulaLine label="現有人壽" value={`${formatNeed(result.lifeHkd)} · ${result.lifeCount} 張`} />
           <FormulaOp sign="=" />
-          <FormulaLine label="尚欠人壽保障" value={formatNeed(result.gap)} total />
+          <FormulaLine label="尚欠人壽保障" value={formatNeed(result.gap)} total gap />
         </div>
         {result.foreignLife ? <p className="hint">另有{result.foreignLife}人壽，沒有兌換，亦沒有從港幣差額扣除。</p> : null}
       </div>
@@ -635,6 +685,10 @@ function NeedResult({
         started={started}
         payTerm={payTerm}
         onPayTerm={onPayTerm}
+        onPin={onPin}
+        pinning={pinning}
+        quoteSaved={quoteSaved}
+        clientId={clientId}
       />
     </aside>
   )
@@ -665,9 +719,10 @@ function useAnimatedAmount(value: number) {
   return shown
 }
 
-function FormulaLine({ label, value, total, note }: { label: string; value: string; total?: boolean; note?: string }) {
+function FormulaLine({ label, value, total, note, gap }: { label: string; value: string; total?: boolean; note?: string; gap?: boolean }) {
+  const className = [total ? 'is-total' : '', gap ? 'is-gap' : ''].filter(Boolean).join(' ')
   return (
-    <p className={total ? 'is-total' : undefined}>
+    <p className={className || undefined}>
       <span>{label}</span>
       <span>
         {value}
@@ -744,6 +799,10 @@ function TermEstimate({
   started,
   payTerm,
   onPayTerm,
+  onPin,
+  pinning,
+  quoteSaved,
+  clientId,
 }: {
   age: number | null
   sex: TermSex | ''
@@ -755,6 +814,10 @@ function TermEstimate({
   started: boolean
   payTerm: UsdTerm
   onPayTerm: (term: UsdTerm) => void
+  onPin: (slip: QuoteSlip) => void
+  pinning: boolean
+  quoteSaved: boolean
+  clientId: string
 }) {
   const plans = age == null || sex === '' ? [] : termPlansForAge(age)
   const parsedBudget = parseOptionalNumber(budget)
@@ -789,6 +852,20 @@ function TermEstimate({
                 {fill.raisedToMinimumSum ? '。缺口少於最低保額 320,000，以上按最低保額計算。' : ''}
                 {fill.raisedToMinimumPremium ? '。低於最低每年保費 800，以上按 800 計算。' : ''}
               </p>
+              <PinButton
+                pinning={pinning}
+                onClick={() =>
+                  onPin({
+                    kind: 'term',
+                    purpose: 'fill',
+                    plan,
+                    sumAssured: fill.sumAssured,
+                    premium: fill.premium,
+                    raisedToMinimumSum: fill.raisedToMinimumSum,
+                    raisedToMinimumPremium: fill.raisedToMinimumPremium,
+                  })
+                }
+              />
             </div>
           )
         })
@@ -798,11 +875,18 @@ function TermEstimate({
       </Field>
       {plans.length > 0 && parsedBudget === 'invalid' ? <p className="hint">請輸入有效的每年預算。</p> : null}
       {age != null && sex !== '' && plans.length > 0 && typeof parsedBudget === 'number' ? (
-        <BudgetCoverLines age={age} sex={sex} smoker={smoker} budget={parsedBudget} plans={plans} />
+        <BudgetCoverLines age={age} sex={sex} smoker={smoker} budget={parsedBudget} plans={plans} onPin={onPin} pinning={pinning} />
       ) : null}
       <p className="hint">率表是港幣，2024 年 1 月。已加每年保單費 200。只計首段水平保費，之後續保未計。</p>
-      <UsdPlans age={age} sex={sex} smoker={smoker} budget={parsedBudget} gap={gap} started={started} payTerm={payTerm} onPayTerm={onPayTerm} />
+      <UsdPlans age={age} sex={sex} smoker={smoker} budget={parsedBudget} gap={gap} started={started} payTerm={payTerm} onPayTerm={onPayTerm} onPin={onPin} pinning={pinning} />
       <p className="hint">匯率固定為 HKD 8 = USD 1。美元名義金額是港幣金額除以 8。優越終身保的分期保費另加每年保單費 25 美元。盈傳用標準風險級別、居住地編碼 A。卓越終身保未有自己的保費率表。最終保費以建議書為準。</p>
+      {quoteSaved ? (
+        <p className="hint">
+          已列入今次估算單。再選另一條會取代這一條。<Link to={`/finance/${clientId}/quote`}> 查看估算單</Link>
+        </p>
+      ) : (
+        <p className="hint">揀一條估算，按「列入今次估算單」，就可以印給客人。再選另一條會取代剛才那條。</p>
+      )}
     </div>
   )
 }
@@ -816,6 +900,8 @@ function UsdPlans({
   started,
   payTerm,
   onPayTerm,
+  onPin,
+  pinning,
 }: {
   age: number | null
   sex: TermSex | ''
@@ -825,6 +911,8 @@ function UsdPlans({
   started: boolean
   payTerm: UsdTerm
   onPayTerm: (term: UsdTerm) => void
+  onPin: (slip: QuoteSlip) => void
+  pinning: boolean
 }) {
   const terms: UsdTerm[] = [10, 20, 25, 5, 'single']
   const ready = age != null && sex !== ''
@@ -856,7 +944,7 @@ function UsdPlans({
                   {name} · {payTerm === 'single' ? '整付' : `${payTerm} 年繳`}
                 </p>
                 {skip ? <p className="hint">{usdSkipText(skip)}</p> : null}
-                {mix ? <MixLines name={name} mix={mix} /> : null}
+                {mix && payTerm !== 'single' ? <MixLines name={name} mix={mix} onPin={onPin} pinning={pinning} product={product} payTerm={payTerm} /> : mix ? <MixLines name={name} mix={mix} /> : null}
                 {fill ? (
                   <>
                     <p className="life-quote-label">{payTerm === 'single' ? '填補缺口一次過' : '填補缺口每年'}</p>
@@ -867,13 +955,49 @@ function UsdPlans({
                       {fill.raisedToMinimumSum ? `。換成美元後少於最低名義金額，以上按 ${formatMoney(fill.usdNotional, 'USD')} 計算。` : ''}
                       {fill.raisedToMinimumPremium ? '。低於最低每年保費 160 美元，以上按這個下限計算。' : ''}
                     </p>
+                    <PinButton
+                      pinning={pinning}
+                      onClick={() =>
+                        onPin({
+                          kind: 'whole',
+                          purpose: 'fill',
+                          product,
+                          payTerm,
+                          usdNotional: fill.usdNotional,
+                          hkdNotional: fill.hkdNotional,
+                          premiumUsd: fill.premiumUsd,
+                          premiumHkd: fill.premiumHkd,
+                          raisedToMinimumSum: fill.raisedToMinimumSum,
+                          raisedToMinimumPremium: fill.raisedToMinimumPremium,
+                        })
+                      }
+                    />
                   </>
                 ) : null}
                 {cover ? (
-                  <p className="hint">
-                    每年預算可買名義金額 {formatMoney(cover.usdNotional, 'USD')}（約 {formatNeed(cover.hkdNotional)}），每年保費 {formatNeed(cover.premiumHkd)}（{formatMoney(cover.premiumUsd, 'USD')}）
-                    {cover.band ? `，組別 ${cover.band}` : ''}。
-                  </p>
+                  <>
+                    <p className="hint">
+                      每年預算可買名義金額 {formatMoney(cover.usdNotional, 'USD')}（約 {formatNeed(cover.hkdNotional)}），每年保費 {formatNeed(cover.premiumHkd)}（{formatMoney(cover.premiumUsd, 'USD')}）
+                      {cover.band ? `，組別 ${cover.band}` : ''}。
+                    </p>
+                    <PinButton
+                      pinning={pinning}
+                      onClick={() =>
+                        onPin({
+                          kind: 'whole',
+                          purpose: 'budget',
+                          product,
+                          payTerm,
+                          usdNotional: cover.usdNotional,
+                          hkdNotional: cover.hkdNotional,
+                          premiumUsd: cover.premiumUsd,
+                          premiumHkd: cover.premiumHkd,
+                          raisedToMinimumSum: cover.raisedToMinimumSum,
+                          raisedToMinimumPremium: cover.raisedToMinimumPremium,
+                        })
+                      }
+                    />
+                  </>
                 ) : null}
                 {!skip && payTerm !== 'single' && typeof budget === 'number' && !cover ? <p className="hint">這個預算未夠買最低名義金額。</p> : null}
               </div>
@@ -885,18 +1009,47 @@ function UsdPlans({
   )
 }
 
-function MixLines({ name, mix }: { name: string; mix: BudgetMix }) {
-  if (mix.kind === 'mix') {
+function MixLines({
+  name,
+  mix,
+  onPin,
+  pinning,
+  product,
+  payTerm,
+}: {
+  name: string
+  mix: BudgetMix
+  onPin?: (slip: QuoteSlip) => void
+  pinning?: boolean
+  product?: 'youyue' | 'yingchuan'
+  payTerm?: 5 | 10 | 20 | 25
+}) {
+  if (mix.kind === 'mix' && onPin && product && payTerm) {
     return (
       <>
         <p className="life-quote-label">預算分拆後補滿缺口</p>
-        <p className="hint">
-          精選定期壽險 {mix.termPlan}：每年 {formatNeed(mix.term.premium)} 買到保額 {formatNeed(mix.term.sumAssured)}。
-        </p>
+        <p className="hint">精選定期壽險 {mix.termPlan}：每年 {formatNeed(mix.term.premium)} 買到保額 {formatNeed(mix.term.sumAssured)}。</p>
         <p className="hint">
           {name}：每年 {formatNeed(mix.whole.premiumHkd)}（{formatMoney(mix.whole.premiumUsd, 'USD')}）買到名義金額 {formatMoney(mix.whole.usdNotional, 'USD')}（約 {formatNeed(mix.whole.hkdNotional)}）。
         </p>
         <p className="hint">兩款保額加起來剛剛補上港幣缺口。精選只保障到 75 歲，終身計劃的名義金額會一直有效。</p>
+        <PinButton
+          pinning={pinning === true}
+          onClick={() =>
+            onPin({
+              kind: 'mix',
+              termPlan: mix.termPlan,
+              termSumAssured: mix.term.sumAssured,
+              termPremium: mix.term.premium,
+              product,
+              payTerm,
+              usdNotional: mix.whole.usdNotional,
+              hkdNotional: mix.whole.hkdNotional,
+              premiumUsd: mix.whole.premiumUsd,
+              premiumHkd: mix.whole.premiumHkd,
+            })
+          }
+        />
       </>
     )
   }
@@ -931,12 +1084,16 @@ function BudgetCoverLines({
   smoker,
   budget,
   plans,
+  onPin,
+  pinning,
 }: {
   age: number
   sex: TermSex
   smoker: boolean
   budget: number
   plans: Array<10 | 20>
+  onPin: (slip: QuoteSlip) => void
+  pinning: boolean
 }) {
   const covers = plans.map((plan) => ({ plan, cover: coverForBudget({ age, sex, smoker, plan, budget }) }))
   if (covers.every((item) => item.cover == null)) {
@@ -944,14 +1101,44 @@ function BudgetCoverLines({
   }
   return (
     <>
-      {covers.map(({ plan, cover }) => (
-        <p key={plan} className="hint">
-          {cover
-            ? `${plan} 年水平保費：可買保額 ${formatNeed(cover.sumAssured)}，每年保費 ${formatNeed(cover.premium)}，組別 ${cover.band}。`
-            : `${plan} 年水平保費：這個預算未夠買最低保額 320,000。`}
-        </p>
-      ))}
+      {covers.map(({ plan, cover }) =>
+        cover ? (
+          <div key={plan}>
+            <p className="hint">
+              {plan} 年水平保費：可買保額 {formatNeed(cover.sumAssured)}，每年保費 {formatNeed(cover.premium)}，組別 {cover.band}。
+            </p>
+            <PinButton
+              pinning={pinning}
+              onClick={() =>
+                onPin({
+                  kind: 'term',
+                  purpose: 'budget',
+                  plan,
+                  sumAssured: cover.sumAssured,
+                  premium: cover.premium,
+                  raisedToMinimumSum: false,
+                  raisedToMinimumPremium: false,
+                })
+              }
+            />
+          </div>
+        ) : (
+          <p key={plan} className="hint">
+            {plan} 年水平保費：這個預算未夠買最低保額 320,000。
+          </p>
+        ),
+      )}
     </>
+  )
+}
+
+function PinButton({ pinning, onClick }: { pinning: boolean; onClick: () => void }) {
+  return (
+    <div className="actions">
+      <button type="button" className="btn btn-ghost" onClick={onClick} disabled={pinning}>
+        {pinning ? '儲存中…' : '列入今次估算單'}
+      </button>
+    </div>
   )
 }
 

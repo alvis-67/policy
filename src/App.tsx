@@ -10,6 +10,8 @@ import { LifePlanDetail, LifePlans } from './pages/LifePlan'
 import { LifeReport } from './pages/LifeReport'
 import { ManulifeFiles } from './pages/ManulifeFiles'
 import { Retirement } from './pages/Retirement'
+import { CoverStatement } from './pages/CoverStatement'
+import { QuoteReport } from './pages/QuoteReport'
 import { Report } from './pages/Report'
 
 export function App() {
@@ -19,6 +21,8 @@ export function App() {
       <Routes>
         <Route path="clients/:id/report" element={<Report />} />
         <Route path="finance/:id/report" element={<LifeReport />} />
+        <Route path="finance/:id/quote" element={<QuoteReport />} />
+        <Route path="analysis/:id/statement" element={<CoverStatement />} />
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="clients" element={<Clients />} />

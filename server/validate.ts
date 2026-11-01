@@ -162,7 +162,18 @@ export function validatePolicy(body: unknown): PolicyWrite {
     premiumAmount: requiredMoney(input.premiumAmount, '保費'),
     premiumFrequency: oneOf(input.premiumFrequency, PREMIUM_FREQUENCIES, '保費週期') as PremiumFrequency,
     premiumTerm: line(input.premiumTerm, 40, '供款年期'),
+    ownerName: line(input.ownerName, 40, '保單持有人'),
+    beneficiary: line(input.beneficiary, 80, '受益人'),
+    premiumUntil: premiumUntilOf(input.premiumUntil),
     status: oneOf(input.status, POLICY_STATUSES, '保單狀態') as PolicyStatus,
     notes: text(input.notes, 2000, '備註'),
+    clientNotes: text(input.clientNotes, 2000, '客戶可見備註'),
   }
+}
+
+function premiumUntilOf(value: unknown) {
+  const date = line(value, 10, '供款至')
+  if (!date) return ''
+  if (!isISODate(date) || date < '1970-01-01' || date > '2100-12-31') throw new HttpError(400, '請檢查供款至')
+  return date
 }
