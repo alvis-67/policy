@@ -57,7 +57,6 @@ export function Report() {
 
   const active = policies.filter((policy) => countsAsCover(policy.status))
   const inactive = policies.filter((policy) => !countsAsCover(policy.status))
-  const monthly = totals ? moneyParts(totals.monthlyEquivalent) : []
 
   return (
     <div className="report-screen">
@@ -76,19 +75,22 @@ export function Report() {
       ) : null}
       {loading ? <p className="report-wait">正在整理報告…</p> : null}
       {!loading && !error && client && totals ? (
-        <article className="report-sheet">
+        <article className="report-sheet report-policy">
           <header className="report-mast">
-            <p className="report-brand">保冊</p>
             <div className="report-mast-row">
-              <p className="report-kicker">Policy Statement</p>
+              <div className="report-mast-title">
+                <p className="report-brand">保冊</p>
+                <h1>保單報告書</h1>
+              </div>
               <p className="report-date">
                 報告日期
                 <strong>{formatDate(issuedOn)}</strong>
               </p>
             </div>
-            <h1>保單報告書</h1>
-            <p className="report-person">{client.chineseName.trim() || client.englishName.trim() || '未命名客戶'}</p>
-            {client.englishName.trim() && client.chineseName.trim() ? <p className="report-person-en">{client.englishName.trim()}</p> : null}
+            <p className="report-person">
+              {client.chineseName.trim() || client.englishName.trim() || '未命名客戶'}
+              {client.englishName.trim() && client.chineseName.trim() ? <span className="report-person-en">{client.englishName.trim()}</span> : null}
+            </p>
             <p className="report-contact-line">
               {[client.phone.trim() ? formatPhone(client.phone) : '', client.email.trim(), client.occupation.trim()]
                 .filter(Boolean)
@@ -96,8 +98,7 @@ export function Report() {
             </p>
           </header>
 
-          <section>
-            <h2>保障概覽</h2>
+          <section className="report-overview">
             <div className="report-cover-grid">
               {POLICY_TYPES.filter((type) => PRIMARY_COVER_TYPES.includes(type.value)).map((type) => (
                 <div key={type.value}>
@@ -107,11 +108,7 @@ export function Report() {
               ))}
             </div>
             <p className="report-premium-line">
-              {[
-                `每年保費 ${moneyParts(totals.annualPremium).join(' · ') || '—'}`,
-                `折合每月 ${monthly.join(' · ') || '—'}`,
-                `${totals.activeCount} 張計入保障`,
-              ].join(' · ')}
+              {[`每年保費 ${moneyParts(totals.annualPremium).join(' · ') || '—'}`, `${totals.activeCount} 張計入保障`].join(' · ')}
             </p>
           </section>
 
@@ -119,7 +116,7 @@ export function Report() {
           {inactive.length > 0 ? <PolicyGroups title="未計入保障" policies={inactive} note="已失效或已退保，不計入上方保障額及保費。" /> : null}
 
           <footer className="report-foot">
-            <p>本報告書根據保單紀錄編製，供這位客戶查閱，並不取代保險合約。不同貨幣分開列示，不會自動兌換。</p>
+            <p>本報告書只為{displayName(client)}而設。本報告書根據保單紀錄編製，並不取代保險合約。不同貨幣分開列示，不會自動兌換。</p>
             <p>保冊 · {APP_VERSION}</p>
           </footer>
         </article>

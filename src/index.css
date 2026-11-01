@@ -720,6 +720,79 @@ span.catalog-pick {
   font-size: 0.88rem;
 }
 
+.report-policy {
+  padding-top: 8mm;
+}
+
+.report-policy .report-mast {
+  padding-bottom: 0.4rem;
+}
+
+.report-policy .report-mast-row {
+  align-items: baseline;
+  padding-top: 0;
+}
+
+.report-policy .report-mast-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.report-policy .report-brand,
+.report-policy .report-mast h1 {
+  margin: 0;
+}
+
+.report-policy .report-mast h1 {
+  font-size: 1.05rem;
+  letter-spacing: 0.12em;
+}
+
+.report-policy .report-date strong {
+  display: inline;
+  margin-top: 0;
+  margin-left: 0.35rem;
+  font-size: inherit;
+}
+
+.report-policy .report-person {
+  margin-top: 0.4rem;
+  font-size: 1.4rem;
+}
+
+.report-policy .report-person-en {
+  margin: 0 0 0 0.55rem;
+  font-size: 0.78rem;
+}
+
+.report-policy .report-contact-line {
+  margin-top: 0.12rem;
+}
+
+.report-policy .report-overview {
+  margin-top: 0.45rem;
+}
+
+.report-policy .report-cover-grid div {
+  padding-top: 0.15rem;
+}
+
+.report-policy .report-cover-grid strong {
+  margin-top: 0.05rem;
+  font-size: 1.05rem;
+}
+
+.report-policy .report-premium-line {
+  margin-top: 0.35rem;
+  padding-top: 0.28rem;
+}
+
+.report-policy h2 {
+  margin-top: 0.7rem;
+}
+
 .report-list {
   margin-top: 0.15rem;
 }
@@ -856,7 +929,8 @@ span.catalog-pick {
     display: none !important;
   }
 
-  .report-sheet {
+  .report-sheet,
+  .report-policy {
     width: auto;
     margin: 0;
     padding: 0;
